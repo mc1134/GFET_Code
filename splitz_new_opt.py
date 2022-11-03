@@ -43,7 +43,7 @@ def splitz_new_opt(data):
     pts = rpt.Binseg(model = "l2").fit(dv).predict(n_bkps = swns) # find change points. this takes a very long time (5 minutes for 700 data points?)
 
     # Splitting the forward and backward into two separate arrays
-    sam = np.mean(dv[pts[0]:pts[1]])
+    sam = np.mean(dv[pts[1]:pts[2]])
     if sam > 0:
         pidx = 1 # Cycle through the pts array
         for val in range(1,(len(pts)-1)//2):
