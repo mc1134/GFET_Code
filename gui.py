@@ -12,6 +12,8 @@ import time
 
 import matlab_helpers as matlab
 import helperfuncs as helpers
+from ssh_to_device import ssh_to_device
+import constants as CONSTANTS
 
 class GUI:
     """
@@ -56,12 +58,19 @@ class GUI:
         ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 2, column = 0)
         ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 2, column = 1)
 
-        ttk.Label(self.frame_prompt, textvariable = self.prompt_str).grid(row = 0, column = 0)
+        ttk.Label(self.frame_prompt, text = "Prompt String:").grid(row = 0, column = 0)
+        ttk.Label(self.frame_prompt, textvariable = self.prompt_str).grid(row = 0, column = 1)
 
-        ttk.Label(self.frame_prompt, textvariable = self.feedback_str).grid(row = 1, column = 0)
+        ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
+        ttk.Label(self.frame_prompt, textvariable = self.feedback_str).grid(row = 1, column = 1)
 
         self.fig = None
         self.initialize_plots()
+
+        self.ssh_client = ssh_to_device()
+
+        self.baseline_dirac = {"mean": None, "std": None}
+        self.sample_dirac = {"mean": None, "std": None}
 
         self.window_root.mainloop()
 
@@ -115,26 +124,8 @@ class GUI:
         plt.title("Linear data and model")
         plt.show()
 
-    ##### Button actions #####
-
-    def connect_action(self):
-        self.feedback_str.set("Connect action not implemented yet.")
-
-    def disconnect_action(self):
-        self.feedback_str.set("Disconnect action not implemented yet.")
-
-    def baseline_action(self):
-        # does same thing as sample - probably runs curvefitting
-        # steps
-        # 1: check connection
-        # 2: if connection, begin collecting data
-        # 3: while collecting data, prompt user for file name (auto-generated one given if user inputs no name) (BASELINE_RAW_DATA_{TIMESTAMP}.csv)
-        # 4: once file name given, csv file is saved to chosen (directory?)
-        # 5: run the splitz function and give feedback to the user on its progress (because this step a long time)
-        # 6: plot the raw data
-        self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
-        file = "124_07_b2_SAMPLING_RAW_DATA.csv" # filepath + filename + fileext
-
+    ##### Sampling data #####
+    def read_raw_data(self, file):
         helpers.print_debug(f"Opening file {file}")
         Base = []
         with open(file) as csvfile:
@@ -157,9 +148,49 @@ class GUI:
         self.fx, self.bx = splitz_new_opt(Base) # Optimized splitz function for any length
         helpers.print_debug("Finished running splitz_new_opt")
 
+    ##### Button actions #####
+
+    def connect_action(self):
+        helpers.print_debug("Connecting to device...")
+        if not self.ssh_client.connect(CONSTANTS.IP_ADDRESS, CONSTANTS.PORT):
+            self.feedback_str.set("Could not connect to " + CONSTANTS.IP_ADDRESS)
+            return
+        self.feedback_str.set("Connected to " + CONSTANTS.IP_ADDRESS)
+        helpers.print_debug("Uploading firmware to device...")
+        if not self.ssh_client.upload_firmware(CONSTANTS.LOCAL_FIRMWARE, CONSTANTS.REMOTE_FIRMWARE):
+            self.feedback_str.set("Could not upload firmware.")
+            return
+        self.feedback_str.set("Connect action completed.")
+        #self.feedback_str.set("Connect action not implemented yet.")
+
+    def disconnect_action(self):
+        self.ssh_client.disconnect()
+        self.feedback_str.set("Disconnected from SSH device.")
+        #self.feedback_str.set("Disconnect action not implemented yet.")
+
+    def baseline_action(self):
+        # does same thing as sample - probably runs curvefitting
+        # steps
+        # 1: check connection
+        # 2: if connection, begin collecting data
+        # 3: while collecting data, prompt user for file name (auto-generated one given if user inputs no name) (BASELINE_RAW_DATA_{TIMESTAMP}.csv)
+        # 4: once file name given, csv file is saved to chosen (directory?)
+        # 5: run the splitz function and give feedback to the user on its progress (because this step a long time)
+        # 6: plot the raw data
+        self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
+        file = "124_07_b2_SAMPLING_RAW_DATA.csv" # filepath + filename + fileext
+        self.read_raw_data(file)
+
     def sample_action(self):
         # see baseline_action
-        self.feedback_str.set("Sample action not implemented yet.")
+        if not self.ssh_client.connected:
+            self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
+            return
+        filename = "Sample"
+        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename)
+        local_sampling_raw_data_file = f"data/{filename}_SAMPLING_RAW_DATA.csv"
+        self.ssh_client.download_file(f"/home/root/{filename}_SAMPLING_RAW_DATA.csv", local_sampling_raw_data_file)
+        self.read_raw_data(local_sampling_raw_data_file)
 
     def close_action(self):
         self.feedback_str.set("Closing window...")
@@ -211,12 +242,13 @@ class GUI:
         bl = np.polynomial.polynomial.polyfit(xn[:xmin], yn[:xmin], 1) # returns numpy.nd_array([c_1, c_2]) for y = c_1 * x + c_2
         br = np.polynomial.polynomial.polyfit(xn[xmin:], yn[xmin:], 1)
         print("left linear fit:", bl, "right linear fit:", br)
-        lsl = bl[0]
-        rsl = br[0]
+        lsl = bl[1]
+        rsl = br[1]
         # defining functions for linear fit
 
         sco, message = helpers.score(hyperbolic_fit.x, parabolic_fit, {"maxn": maxn, "avgn": avgn}, {"lsl": lsl, "rsl": rsl})
         self.feedback_str.set(f"Score: {sco}\n{message}")
+        print(f"Score: {sco}\n{message}")
 
         self.plot_qc_approximations(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
         #self.plot_to_window(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
