@@ -89,3 +89,31 @@ def hyp_residuals(fun_params, xn, yn): # this will evaluate the residuals of the
 def lin_model(fun_params, x): # this will evaluate the linear fit function
     b, m = fun_params[0], fun_params[1]
     return [m * item for item in x] + b # cannot multiple float by list of floats
+
+def sweepmean(s): # needs testing
+    """s assumed to have the following structure:
+    [
+        [
+            [gate_voltages_1, ids_1],
+            ['-0.1234', '6.78e-05'],
+            ...
+        ],
+        [
+            [gate_voltages_2, ids_2],
+            ['0.2468', '-1.3579e-02'],
+            ...
+        ],
+        ...
+    ]
+    note that this is the same as "fx" from the splitz_new_opt function
+    """
+    jmin = []
+    for row in s: # each iteration finds the smallest ID, then adds the corresponding voltage to jmin
+        IDs = [item[1] for item in row]
+        voltages = [item[0] for item in row]
+        min_id = min(IDs)
+        min_voltage = voltages[IDs.index(min_id)]
+        jmin += [min_voltage]
+    mina = np.mean(jmin)
+    mins = np.std(jmin)
+    return mina, mins, jmin  # call this function with fx/bx, then display/save the mina and mins somewhere

@@ -69,8 +69,8 @@ class GUI:
 
         self.ssh_client = ssh_to_device()
 
-        self.baseline_dirac = {"mean": None, "std": None}
-        self.sample_dirac = {"mean": None, "std": None}
+        self.baseline_dirac = None
+        self.sampling_dirac = None
 
         self.window_root.mainloop()
 
@@ -123,6 +123,17 @@ class GUI:
         plt.legend()
         plt.title("Linear data and model")
         plt.show()
+
+    def plot_results(self, x_baseline, y_baseline, x_sampling, y_sampling):
+        helpers.print_debug("Plotting result graph")
+        self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
+        result_plot = self.fig.add_subplot(1, 3, 2)
+        result_plot.plot(x_baseline, y_baseline, label="Baseline")
+        result_plot.plot(x_sampling, y_sampling, label="Sampling")
+        result_plot.legend()
+        #result_plot.title("Plot of second forward sweeps for baseline and sample data")
+        canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
+        canvas._tkcanvas.grid(row = 3, column = 0)
 
     ##### Sampling data #####
     def read_raw_data(self, file):
@@ -178,19 +189,31 @@ class GUI:
         # 5: run the splitz function and give feedback to the user on its progress (because this step a long time)
         # 6: plot the raw data
         self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
-        file = "124_07_b2_SAMPLING_RAW_DATA.csv" # filepath + filename + fileext
+        file = "124_07_b2_BASELINE_RAW_DATA.csv" # filepath + filename + fileext
         self.read_raw_data(file)
+        self.baseline_fx = self.fx
+        mina, mins, jmin = helpers.sweepmean(self.fx)
+        self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
 
     def sample_action(self):
         # see baseline_action
-        if not self.ssh_client.connected:
-            self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
+        # if not self.ssh_client.connected:
+        #     self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
+        #     return
+        # filename = "SAMPLING"
+        # self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename)
+        # local_sampling_raw_data_file = f"data/{filename}_SAMPLING_RAW_DATA.csv"
+        # self.ssh_client.download_file(f"/home/root/{filename}_SAMPLING_RAW_DATA.csv", local_sampling_raw_data_file)
+        # TMP
+        if self.baseline_dirac is None:
+            self.feedback_str.set("Please run a baseline first")
             return
-        filename = "Sample"
-        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename)
-        local_sampling_raw_data_file = f"data/{filename}_SAMPLING_RAW_DATA.csv"
-        self.ssh_client.download_file(f"/home/root/{filename}_SAMPLING_RAW_DATA.csv", local_sampling_raw_data_file)
+        self.feedback_str.set("Temporary sample action")
+        local_sampling_raw_data_file = "124_07_b2_SAMPLING_RAW_DATA.csv"
         self.read_raw_data(local_sampling_raw_data_file)
+        self.sampling_fx = self.fx
+        mina, mins, jmin = helpers.sweepmean(self.fx)
+        self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
 
     def close_action(self):
         self.feedback_str.set("Closing window...")
@@ -257,7 +280,24 @@ class GUI:
     def results_action(self):
         # run sweepmean2: this calculates dirac_shift (difference in average minima)
         # refer to Main script and Process_new_min script
-        self.feedback_str.set("Results action not implemented yet.")
+        if self.baseline_dirac is None:
+            self.feedback_str.set("Please run a baseline first.")
+            return
+        if self.sampling_dirac is None:
+            self.feedback_str.set("Please run a sample first.")
+            return
+        dirac_shift = abs(self.baseline_dirac["mean"] - self.sampling_dirac["mean"])
+        # plot second forward sweeps
+        sweep_num = 1 # run QC test on the second sweep
+        x_baseline = [obj[0] for obj in self.baseline_fx[sweep_num]]
+        x_baseline = [item / max(x_baseline) for item in x_baseline]
+        y_baseline = [obj[1] for obj in self.baseline_fx[sweep_num]]
+        y_baseline = [item / max(y_baseline) for item in y_baseline]
+        x_sampling = [obj[0] for obj in self.sampling_fx[sweep_num]]
+        x_sampling = [item / max(x_sampling) for item in x_sampling]
+        y_sampling = [obj[1] for obj in self.sampling_fx[sweep_num]]
+        y_sampling = [item / max(y_sampling) for item in y_sampling]
+        self.plot_results(x_baseline, y_baseline, x_sampling, y_sampling)
+        #self.feedback_str.set("Results action not implemented yet.")
+        self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
 
-
-# find a text field that allows highlighting/copying (for copying movmean parameters)

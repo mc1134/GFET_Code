@@ -27,7 +27,7 @@ if __name__ == "__main__":
 	# might devise my own color scheme - tyler etc. don't really mind or have a specific color scheme
 
 # results button calculates the dirac voltage shift (in millivolts) (taking the absolute difference between the average of the minima of the sample and baseline curves) and plot a baseline and sample (2nd or 3rd forw) curve on the same plot
-
+	# done
 # currently hard codes the ip addresses; the old program currently selects the first detected ip address; eventually will implement a drop down with the detected list of ip addresses and you choose one then click connect
 
 # TODO 11/18:
