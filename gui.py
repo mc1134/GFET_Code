@@ -180,36 +180,33 @@ class GUI:
         #self.feedback_str.set("Disconnect action not implemented yet.")
 
     def baseline_action(self):
-        # does same thing as sample - probably runs curvefitting
-        # steps
-        # 1: check connection
-        # 2: if connection, begin collecting data
-        # 3: while collecting data, prompt user for file name (auto-generated one given if user inputs no name) (BASELINE_RAW_DATA_{TIMESTAMP}.csv)
-        # 4: once file name given, csv file is saved to chosen (directory?)
-        # 5: run the splitz function and give feedback to the user on its progress (because this step a long time)
-        # 6: plot the raw data
-        self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
-        file = "124_07_b2_BASELINE_RAW_DATA.csv" # filepath + filename + fileext
-        self.read_raw_data(file)
+        if not self.ssh_client.connected:
+            self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
+            return
+        filename = "BASELINE" # TODO change this to user-input text
+        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, "BASELINE")
+        local_baseline_raw_data_file = f"data/{filename}_BASELINE_RAW_DATA.csv"
+        self.ssh_client.download_file(f"/home/root/{filename}_BASELINE_RAW_DATA.csv", local_sampling_raw_data_file)
+        # self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
+        # local_baseline_raw_data_file = "124_07_b2_BASELINE_RAW_DATA.csv" # filepath + filename + fileext
+        self.read_raw_data(local_baseline_raw_data_file)
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
 
     def sample_action(self):
-        # see baseline_action
-        # if not self.ssh_client.connected:
-        #     self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
-        #     return
-        # filename = "SAMPLING"
-        # self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename)
-        # local_sampling_raw_data_file = f"data/{filename}_SAMPLING_RAW_DATA.csv"
-        # self.ssh_client.download_file(f"/home/root/{filename}_SAMPLING_RAW_DATA.csv", local_sampling_raw_data_file)
-        # TMP
+        if not self.ssh_client.connected:
+            self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
+            return
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first")
             return
-        self.feedback_str.set("Temporary sample action")
-        local_sampling_raw_data_file = "124_07_b2_SAMPLING_RAW_DATA.csv"
+        filename = "SAMPLING"
+        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, "SAMPLING")
+        local_sampling_raw_data_file = f"data/{filename}_SAMPLING_RAW_DATA.csv"
+        self.ssh_client.download_file(f"/home/root/{filename}_SAMPLING_RAW_DATA.csv", local_sampling_raw_data_file)
+        # self.feedback_str.set("Sample action not implemented yet. Currently just reads CSV data and puts that into graph form")
+        # local_sampling_raw_data_file = "124_07_b2_SAMPLING_RAW_DATA.csv"
         self.read_raw_data(local_sampling_raw_data_file)
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
@@ -298,6 +295,5 @@ class GUI:
         y_sampling = [obj[1] for obj in self.sampling_fx[sweep_num]]
         y_sampling = [item / max(y_sampling) for item in y_sampling]
         self.plot_results(x_baseline, y_baseline, x_sampling, y_sampling)
-        #self.feedback_str.set("Results action not implemented yet.")
         self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
 
