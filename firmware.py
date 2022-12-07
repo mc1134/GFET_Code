@@ -1354,7 +1354,7 @@ try:
     #WAIT FOR LED THREAD TO FINISH
     thread_led.join(600)
 
-    raw_data_filename = f"timestamp_filename_{sample_mode}_RAW_DATA.csv"
+    raw_data_filename = f"{timestamp_filename}_{sample_mode}_RAW_DATA.csv"
 
     file_check_wait = 10
 

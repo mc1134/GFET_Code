@@ -183,10 +183,10 @@ class GUI:
         if not self.ssh_client.connected:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
-        filename = "BASELINE" # TODO change this to user-input text
-        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, "BASELINE")
-        local_baseline_raw_data_file = f"data/{filename}_BASELINE_RAW_DATA.csv"
-        self.ssh_client.download_file(f"/home/root/{filename}_BASELINE_RAW_DATA.csv", local_sampling_raw_data_file)
+        filename, mode = "TEST", "BASELINE" # TODO change this to user-input text
+        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, mode)
+        local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
+        self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_baseline_raw_data_file)
         # self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
         # local_baseline_raw_data_file = "124_07_b2_BASELINE_RAW_DATA.csv" # filepath + filename + fileext
         self.read_raw_data(local_baseline_raw_data_file)
@@ -201,10 +201,10 @@ class GUI:
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first")
             return
-        filename = "SAMPLING"
-        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, "SAMPLING")
-        local_sampling_raw_data_file = f"data/{filename}_SAMPLING_RAW_DATA.csv"
-        self.ssh_client.download_file(f"/home/root/{filename}_SAMPLING_RAW_DATA.csv", local_sampling_raw_data_file)
+        filename, mode = "TEST", "SAMPLING"
+        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, mode)
+        local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
+        self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_sampling_raw_data_file)
         # self.feedback_str.set("Sample action not implemented yet. Currently just reads CSV data and puts that into graph form")
         # local_sampling_raw_data_file = "124_07_b2_SAMPLING_RAW_DATA.csv"
         self.read_raw_data(local_sampling_raw_data_file)
