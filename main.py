@@ -23,3 +23,4 @@ to discuss
 # enhancement: export json of the qc parameters
 # enhancement: add title text to the plots
 # try to implement baseline and sample buttons to be real time - show this real time data in the plot
+# user input for the IP address and file name
