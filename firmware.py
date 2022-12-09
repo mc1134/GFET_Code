@@ -1095,28 +1095,6 @@ class samplingThread (threading.Thread):
             idx_high = np.abs(Vgate_prime - fit_high).argmin()
             # print(idx_low,idx_high)
 
-            spl = np.poly1d(np.polyfit(
-                Vgate_prime[idx_low:idx_high], Ids_prime[idx_low:idx_high], 9))
-
-            xs = np.linspace(Vgate_prime[idx_low], Vgate_prime[idx_high], 4000)
-
-            peak = xs[np.where(spl(xs) == min(spl(xs)))]
-
-            Dirac = np.append(Dirac, peak[0])
-
-            if sweep_type[i] == 'FORWARD':
-                dirac_forward_sweep = np.append(dirac_forward_sweep, peak[0])
-            else:
-                dirac_reverse_sweep = np.append(dirac_reverse_sweep, peak[0])
-
-        #MEAN
-        mean_dirac_forward_sweep = np.mean(dirac_forward_sweep, axis=0)
-        mean_dirac_reverse_sweep = np.mean(dirac_reverse_sweep, axis=0)
-
-        #STD
-        std_dirac_forward_sweep = np.std(dirac_forward_sweep, axis=0)
-        std_dirac_reverse_sweep = np.std(dirac_reverse_sweep, axis=0)
-
         # =============================================================================
         # CREATE TIME STANP FOR FILES
         # =============================================================================
