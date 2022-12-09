@@ -1288,9 +1288,6 @@ try:
             is_filename_set = True
 
         if i == 2:
-            server_ip = arg
-
-        if i == 3:
             sample_mode = arg # this is either "BASELINE" or "SAMPLING"
 
     if is_filename_set:
