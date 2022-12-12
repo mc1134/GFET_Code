@@ -1,5 +1,5 @@
 import tkinter
-from tkinter import ttk, Toplevel, Tk
+from tkinter import ttk, Toplevel
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
@@ -38,6 +38,8 @@ class GUI:
 
         self.prompt_str = tkinter.StringVar() # TODO currently unused
         self.feedback_str = tkinter.StringVar()
+        self.IP = tkinter.StringVar()
+        self.IP.set("10.0.0.0")
         self.feedback_str.set("This is the temporary label for displaying button feedback information.")
 
         self.frame_controls = tkinter.Frame(self.window_root, background = "Green") # frame for buttons etc.
@@ -48,15 +50,28 @@ class GUI:
         self.frame_prompt.grid(row = 1, column = 0)
         self.frame_plot.grid(row = 2, column = 0)
 
-        ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 0)
-        ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 1)
-        ttk.Button(self.frame_controls, text = "Close", command = self.close_action).grid(row = 0, column = 2)
+        # connect controls
+        ttk.Label(self.frame_controls, text = "Enter IP Address").grid(row = 0, column = 0)
+        self.IP_entry = ttk.Entry(self.frame_controls, textvariable = self.IP)
+        self.IP_entry.grid(row = 0, column = 1)
+        ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 2)
+        ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 3)
+        #ttk.Button(self.frame_controls, text = "Close", command = self.close_action).grid(row = 0, column = 4)
 
+        # baseline controls
         ttk.Button(self.frame_controls, text = "Baseline", command = self.baseline_action).grid(row = 1, column = 0)
-        ttk.Button(self.frame_controls, text = "Sample", command = self.sample_action).grid(row = 1, column = 1)
+        ttk.Button(self.frame_controls, text = "Baseline from file", command = self.baseline_from_file_action).grid(row = 1, column = 1)
 
-        ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 2, column = 0)
-        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 2, column = 1)
+        # sample controls
+        ttk.Button(self.frame_controls, text = "Sample", command = self.sample_action).grid(row = 2, column = 0)
+        ttk.Button(self.frame_controls, text = "Sample from file", command = self.sample_from_file_action).grid(row = 2, column = 1)
+
+        # analytics controls
+        ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 3, column = 0)
+        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 3, column = 1)
+
+        # TEST BUTTON
+        ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 4, column = 0)
 
         ttk.Label(self.frame_prompt, text = "Prompt String:").grid(row = 0, column = 0)
         ttk.Label(self.frame_prompt, textvariable = self.prompt_str).grid(row = 0, column = 1)
@@ -72,24 +87,32 @@ class GUI:
         self.baseline_dirac = None
         self.sampling_dirac = None
 
-        self.IP = None
         self.popup_entry = None
 
         self.window_root.mainloop()
 
-    ##### Popup window #####
+    def test_button_action(self):
+        self.feedback_str.set("Test button pressed")
+        def popup_action():
+            self.IP = self.IP_entry.get()
+            self.prompt_str.set(self.IP)
+        self.text_popup("title of popup", "prompt", popup_action)
+
+    ##### Additional TK components #####
+
     def text_popup(self, title, prompt, button_action):
-        window_popup = Toplevel(Tk())
-        window_popup.geometry("200x50")
+        window_popup = tkinter.Tk()
+        window_popup.geometry("200x100")
         window_popup.title(title)
-        ttk.Label(window_popup, text = prompt).place(0, 0)
-        entry = ttk.Entry(window_popup, width = 20).focus_set()
+        ttk.Label(window_popup, text = prompt).place(x = 0, y = 0)
+        entry = ttk.Entry(window_popup, width = 20)
+        entry.place(x = 0, y = 20)
         def close_popup():
             self.popup_entry = entry.get()
             button_action()
             window_popup.quit()
-        ttk.Button(window_popup, text = "Submit", command = close_popup).place(0, 150)
-        text_popup.mainloop()
+        ttk.Button(window_popup, text = "Submit", command = close_popup).place(x = 0, y = 40)
+        window_popup.mainloop()
 
     ##### Plots #####
 
@@ -152,7 +175,11 @@ class GUI:
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
 
-    ##### Sampling data #####
+    ##### File operations #####
+
+    def select_file():
+        # TODO
+        return "data/124_07_b2_BASELINE_RAW_DATA.csv"
 
     def read_raw_data(self, file):
         helpers.print_debug(f"Opening file {file}")
@@ -181,9 +208,6 @@ class GUI:
 
     def connect_action(self):
         helpers.print_debug("Connecting to device...")
-        def connect_button_action():
-            self.IP = self.popup_entry
-        self.text_popup("Connect action: Input IP", "Please input the IP address.", connect_button_action)
         if not self.ssh_client.connect(CONSTANTS.IP_ADDRESS, CONSTANTS.PORT):
             self.feedback_str.set("Could not connect to " + CONSTANTS.IP_ADDRESS)
             return
@@ -216,8 +240,6 @@ class GUI:
         if not downloaded:
             self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Baseline data file was not downloaded.")
             return
-        # self.feedback_str.set("Baseline action not implemented yet. Currently just reads CSV data and puts that into graph form")
-        # local_baseline_raw_data_file = "124_07_b2_BASELINE_RAW_DATA.csv" # filepath + filename + fileext
         self.read_raw_data(local_baseline_raw_data_file)
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
@@ -242,14 +264,28 @@ class GUI:
         if not downloaded:
             self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Sampling data file was not downloaded.")
             return
-        # self.feedback_str.set("Sample action not implemented yet. Currently just reads CSV data and puts that into graph form")
-        # local_sampling_raw_data_file = "124_07_b2_SAMPLING_RAW_DATA.csv"
         self.read_raw_data(local_sampling_raw_data_file)
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
 
-    def close_action(self):
+    def baseline_from_file_action(self):
+        self.feedback_str.set("Selecting file...")
+        local_baseline_raw_data_file = self.select_file()
+        self.read_raw_data(local_baseline_raw_data_file)
+        self.baseline_fx = self.fx
+        mina, mins, jmin = helpers.sweepmean(self.fx)
+        self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
+
+    def sample_from_file_action(self):
+        self.feedback_str.set("Selecting file...")
+        local_sampling_raw_data_file = self.select_file()
+        self.read_raw_data(local_sampling_raw_data_file)
+        self.sampling_fx = self.fx
+        mina, mins, jmin = helpers.sweepmean(self.fx)
+        self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
+
+    def close_action(self): # currently unused. user can just click x button to close window
         self.feedback_str.set("Closing window...")
         self.window_root.quit()
         self.window_root.destroy()
