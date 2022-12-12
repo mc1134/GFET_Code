@@ -1,5 +1,5 @@
 import tkinter
-from tkinter import ttk
+from tkinter import ttk, Toplevel, Tk
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
@@ -72,7 +72,24 @@ class GUI:
         self.baseline_dirac = None
         self.sampling_dirac = None
 
+        self.IP = None
+        self.popup_entry = None
+
         self.window_root.mainloop()
+
+    ##### Popup window #####
+    def text_popup(self, title, prompt, button_action):
+        window_popup = Toplevel(Tk())
+        window_popup.geometry("200x50")
+        window_popup.title(title)
+        ttk.Label(window_popup, text = prompt).place(0, 0)
+        entry = ttk.Entry(window_popup, width = 20).focus_set()
+        def close_popup():
+            self.popup_entry = entry.get()
+            button_action()
+            window_popup.quit()
+        ttk.Button(window_popup, text = "Submit", command = close_popup).place(0, 150)
+        text_popup.mainloop()
 
     ##### Plots #####
 
@@ -136,6 +153,7 @@ class GUI:
         canvas._tkcanvas.grid(row = 3, column = 0)
 
     ##### Sampling data #####
+
     def read_raw_data(self, file):
         helpers.print_debug(f"Opening file {file}")
         Base = []
@@ -163,6 +181,9 @@ class GUI:
 
     def connect_action(self):
         helpers.print_debug("Connecting to device...")
+        def connect_button_action():
+            self.IP = self.popup_entry
+        self.text_popup("Connect action: Input IP", "Please input the IP address.", connect_button_action)
         if not self.ssh_client.connect(CONSTANTS.IP_ADDRESS, CONSTANTS.PORT):
             self.feedback_str.set("Could not connect to " + CONSTANTS.IP_ADDRESS)
             return
@@ -187,10 +208,11 @@ class GUI:
         self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, mode)
         local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         downloaded, time_elapsed, start_time = False, 0, time.time()
-        while not downloaded and time_elapsed >= CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
+        while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             print(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_baseline_raw_data_file)
+            time_elapsed += CONSTANTS.DOWNLOAD_DELAY
         if not downloaded:
             self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Baseline data file was not downloaded.")
             return
@@ -212,10 +234,11 @@ class GUI:
         self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, mode)
         local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         downloaded, time_elapsed, start_time = False, 0, time.time()
-        while not downloaded and time_elapsed >= CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
+        while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             print(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_sampling_raw_data_file)
+            time_elapsed += CONSTANTS.DOWNLOAD_DELAY
         if not downloaded:
             self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Sampling data file was not downloaded.")
             return
@@ -235,6 +258,9 @@ class GUI:
         # run curvefitting.py line 51+
         # plot parabolic, hyperbolic, and linear approximations
         # show text for the moving average approximation
+        if self.fx is None:
+            self.feedback_str.set("No forward sweep array in memory. Please run a baseline or sample.")
+            return
         self.feedback_str.set("Running rudimentary quality control testing; generating fits")
         sweep_num = 1 # run QC test on the second sweep
         x = [obj[0] for obj in self.fx[sweep_num]] # voltages

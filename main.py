@@ -22,5 +22,12 @@ to discuss
 # driver program does not exit after generating raw data file so it needs to be remotely terminated from the gui program
 # enhancement: export json of the qc parameters
 # enhancement: add title text to the plots
-# try to implement baseline and sample buttons to be real time - show this real time data in the plot
 # user input for the IP address and file name
+
+# put some feedback to the terminal when and after connecting successfully
+# imports for microcontroller: openpyxl
+#   new devices to come soon
+# add buttons called "baseline from file" and "sample from file"
+# bad data from microcontroller might mess up the quality control algorithm
+#   solved by adding buttons to read from file (after user separately cleans file)
+#   data picked was the last sweep when it should have been a "middle" sweep
