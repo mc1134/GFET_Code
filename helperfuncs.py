@@ -11,6 +11,8 @@ def print_debug(s):
     if DEBUG:
         print(f"{get_time()} | {s}")
 
+
+# helper function for scoring goodness of fit
 def score(hyperbolic_fit, parabolic_fit, moving_mean_fit, linear_fit):
     print(hyperbolic_fit)
     print(parabolic_fit)
@@ -117,3 +119,16 @@ def sweepmean(s): # needs testing
     mina = np.mean(jmin)
     mins = np.std(jmin)
     return mina, mins, jmin  # call this function with fx/bx, then display/save the mina and mins somewhere
+
+
+# validation functions
+def validate_ip(ip):
+    parts = ip.split(".")
+    try:
+        if len(parts) == 4 and all(0 <= int(part) <= 255 for part in parts):
+            return True
+        else:
+            print_debug(f"Invalid IP address: {ip}")
+    except ValueError as e:
+        print_debug(f"Invalid IP address: {ip}")
+    return False

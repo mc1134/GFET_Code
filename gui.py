@@ -207,11 +207,15 @@ class GUI:
     ##### Button actions #####
 
     def connect_action(self):
-        helpers.print_debug("Connecting to device...")
-        if not self.ssh_client.connect(CONSTANTS.IP_ADDRESS, CONSTANTS.PORT):
-            self.feedback_str.set("Could not connect to " + CONSTANTS.IP_ADDRESS)
+        self.IP = self.IP_entry.get()
+        if not helpers.validate_ip(self.IP):
+            self.feedback_str.set(f'The IP address "{self.IP}" is not valid.')
             return
-        self.feedback_str.set("Connected to " + CONSTANTS.IP_ADDRESS)
+        helpers.print_debug(f"Connecting to device ({self.IP})...")
+        if not self.ssh_client.connect(self.IP, CONSTANTS.PORT):
+            self.feedback_str.set(f"Could not connect to {self.IP}.")
+            return
+        self.feedback_str.set(f"Connected to {self.IP}.")
         helpers.print_debug("Uploading firmware to device...")
         if not self.ssh_client.upload_firmware(CONSTANTS.LOCAL_FIRMWARE, CONSTANTS.REMOTE_FIRMWARE):
             self.feedback_str.set("Could not upload firmware.")
