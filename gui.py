@@ -1,5 +1,5 @@
 import tkinter
-from tkinter import ttk, Toplevel
+from tkinter import ttk, filedialog
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
@@ -93,10 +93,12 @@ class GUI:
 
     def test_button_action(self):
         self.feedback_str.set("Test button pressed")
-        def popup_action():
-            self.IP = self.IP_entry.get()
-            self.prompt_str.set(self.IP)
-        self.text_popup("title of popup", "prompt", popup_action)
+        """def popup_action():
+                                    self.IP = self.IP_entry.get()
+                                    self.prompt_str.set(self.IP)
+                                self.text_popup("title of popup", "prompt", popup_action)"""
+        filename = filedialog.askopenfilename()
+        self.feedback_str.set(f"File name: {filename}")
 
     ##### Additional TK components #####
 
@@ -177,9 +179,10 @@ class GUI:
 
     ##### File operations #####
 
-    def select_file():
-        # TODO
-        return "data/124_07_b2_BASELINE_RAW_DATA.csv"
+    def select_file(self):
+        filename = filedialog.askopenfilename()
+        helpers.print_debug(f"Selected file: {filename}")
+        return filename
 
     def read_raw_data(self, file):
         helpers.print_debug(f"Opening file {file}")
@@ -276,18 +279,30 @@ class GUI:
     def baseline_from_file_action(self):
         self.feedback_str.set("Selecting file...")
         local_baseline_raw_data_file = self.select_file()
-        self.read_raw_data(local_baseline_raw_data_file)
+        try:
+            self.read_raw_data(local_baseline_raw_data_file)
+        except Exception as e:
+            print_debug(e)
+            self.feedback_str.set(f"Could not open file {local_baseline_raw_data_file}")
+            return
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
+        self.feedback_str.set(f"Successfully loaded baseline file {local_baseline_raw_data_file}")
 
     def sample_from_file_action(self):
         self.feedback_str.set("Selecting file...")
         local_sampling_raw_data_file = self.select_file()
-        self.read_raw_data(local_sampling_raw_data_file)
+        try:
+            self.read_raw_data(local_sampling_raw_data_file)
+        except Exception as e:
+            print_debug(e)
+            self.feedback_str.set(f"Could not open file {local_sampling_raw_data_file}")
+            return
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
+        self.feedback_str.set(f"Successfully loaded sampling file {local_sampling_raw_data_file}")
 
     def close_action(self): # currently unused. user can just click x button to close window
         self.feedback_str.set("Closing window...")
