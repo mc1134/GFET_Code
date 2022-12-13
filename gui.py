@@ -97,10 +97,10 @@ class GUI:
 
     def test_button_action(self):
         self.feedback_str.set("Test button pressed")
-        """def popup_action():
-                                    self.IP = self.IP_entry.get()
-                                    self.prompt_str.set(self.IP)
-                                self.text_popup("title of popup", "prompt", popup_action)"""
+        def popup_action():
+            self.IP = self.IP_entry.get()
+            self.prompt_str.set(self.IP)
+        self.text_popup("title of popup", "prompt", popup_action)
         filename = filedialog.askopenfilename()
         self.feedback_str.set(f"File name: {filename}")
 
@@ -108,13 +108,12 @@ class GUI:
 
     def text_popup(self, title, prompt, button_action):
         window_popup = tkinter.Tk()
-        window_popup.geometry("200x100")
+        window_popup.geometry("300x100")
         window_popup.title(title)
         ttk.Label(window_popup, text = prompt).place(x = 0, y = 0)
-        entry = ttk.Entry(window_popup, width = 20)
-        entry.place(x = 0, y = 20)
+        self.popup_entry = ttk.Entry(window_popup, width = 20)
+        self.popup_entry.place(x = 0, y = 20)
         def close_popup():
-            self.popup_entry = entry.get()
             button_action()
             window_popup.quit()
         ttk.Button(window_popup, text = "Submit", command = close_popup).place(x = 0, y = 40)
@@ -239,7 +238,11 @@ class GUI:
         if not self.ssh_client.connected:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
-        filename, mode = "TEST", "BASELINE" # TODO change this to user-input text
+        filename, mode = None, "BASELINE"
+        def popup_action():
+            filename = self.popup_entry.get()
+            self.feedback_str.set(f"File name: {filename}")
+        self.text_popup("Baseline file name", "Enter the file name for the baseline data collection", popup_action)
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         downloaded, time_elapsed, start_time = False, 0, time.time()
@@ -263,7 +266,11 @@ class GUI:
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first")
             return
-        filename, mode = "TEST", "SAMPLING"
+        filename, mode = None, "SAMPLING"
+        def popup_action():
+            filename = self.popup_entry.get()
+            self.feedback_str.set(f"File name: {filename}")
+        self.text_popup("Sampling file name", "Enter the file name for the sampling data collection", popup_action)
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         downloaded, time_elapsed, start_time = False, 0, time.time()
@@ -286,7 +293,7 @@ class GUI:
         try:
             self.read_raw_data(local_baseline_raw_data_file)
         except Exception as e:
-            print_debug(e)
+            helpers.print_debug(e)
             self.feedback_str.set(f"Could not open file {local_baseline_raw_data_file}")
             return
         self.baseline_fx = self.fx
@@ -300,7 +307,7 @@ class GUI:
         try:
             self.read_raw_data(local_sampling_raw_data_file)
         except Exception as e:
-            print_debug(e)
+            helpers.print_debug(e)
             self.feedback_str.set(f"Could not open file {local_sampling_raw_data_file}")
             return
         self.sampling_fx = self.fx

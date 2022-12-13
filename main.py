@@ -27,3 +27,5 @@ to discuss
 # imports for microcontroller: openpyxl
 #   new devices to come soon
 # data picked was the last sweep when it should have been a "middle" sweep
+
+# show score from q/c in the gui
