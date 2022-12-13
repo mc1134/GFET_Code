@@ -69,3 +69,15 @@ class ssh_to_device:
             print(f"Could not download file {file} to device")
             print(f"Reason: {e}")
             return False
+
+    def delete_file(self, file):
+        if not self.client:
+            print("Client is not connected. Need to connect first.")
+            return False
+        try:
+            stdin, stdout, stderr = self.client.exec_command(f"rm -rf {file}")
+            return True
+        except Exception as e:
+            print(f"Could not delete file {file} from device")
+            print(f"Reason: {e}")
+            return False
