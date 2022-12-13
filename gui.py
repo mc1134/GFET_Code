@@ -59,20 +59,25 @@ class GUI:
         ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 3)
         #ttk.Button(self.frame_controls, text = "Close", command = self.close_action).grid(row = 0, column = 4)
 
+        # file name entry
+        ttk.Label(self.frame_controls, text = "Enter file name to be used in baseline/sampling data collection").grid(row = 1, column = 0)
+        self.filename_entry = ttk.Entry(self.frame_controls)
+        self.filename_entry.grid(row = 1, column = 1)
+
         # baseline controls
-        ttk.Button(self.frame_controls, text = "Baseline", command = self.baseline_action).grid(row = 1, column = 0)
-        ttk.Button(self.frame_controls, text = "Baseline from file", command = self.baseline_from_file_action).grid(row = 1, column = 1)
+        ttk.Button(self.frame_controls, text = "Baseline", command = self.baseline_action).grid(row = 2, column = 0)
+        ttk.Button(self.frame_controls, text = "Baseline from file", command = self.baseline_from_file_action).grid(row = 2, column = 1)
 
         # sample controls
-        ttk.Button(self.frame_controls, text = "Sample", command = self.sample_action).grid(row = 2, column = 0)
-        ttk.Button(self.frame_controls, text = "Sample from file", command = self.sample_from_file_action).grid(row = 2, column = 1)
+        ttk.Button(self.frame_controls, text = "Sample", command = self.sample_action).grid(row = 3, column = 0)
+        ttk.Button(self.frame_controls, text = "Sample from file", command = self.sample_from_file_action).grid(row = 3, column = 1)
 
         # analytics controls
-        ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 3, column = 0)
-        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 3, column = 1)
+        ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
+        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 4, column = 1)
 
         # TEST BUTTON
-        ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 4, column = 0)
+        ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 5, column = 0)
 
         ttk.Label(self.frame_prompt, text = "Prompt String:").grid(row = 0, column = 0)
         ttk.Label(self.frame_prompt, textvariable = self.prompt_str).grid(row = 0, column = 1)
@@ -116,6 +121,7 @@ class GUI:
         def close_popup():
             button_action()
             window_popup.quit()
+            window_popup.destroy()
         ttk.Button(window_popup, text = "Submit", command = close_popup).place(x = 0, y = 40)
         window_popup.mainloop()
 
@@ -238,16 +244,13 @@ class GUI:
         if not self.ssh_client.connected:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
-        filename, mode = None, "BASELINE"
-        def popup_action():
-            filename = self.popup_entry.get()
-            self.feedback_str.set(f"File name: {filename}")
-        self.text_popup("Baseline file name", "Enter the file name for the baseline data collection", popup_action)
+        filename, mode = self.filename_entry.get(), "BASELINE"
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
+        self.feedback_str.set(f"Using file {local_baseline_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
-            print(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
+            helpers.print_debug(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_baseline_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
@@ -266,16 +269,13 @@ class GUI:
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first")
             return
-        filename, mode = None, "SAMPLING"
-        def popup_action():
-            filename = self.popup_entry.get()
-            self.feedback_str.set(f"File name: {filename}")
-        self.text_popup("Sampling file name", "Enter the file name for the sampling data collection", popup_action)
+        filename, mode = self.filename_entry.get(), "SAMPLING"
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
+        self.feedback_str.set(f"Using file {local_sampling_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
-            print(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
+            helpers.print_debug(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_sampling_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
