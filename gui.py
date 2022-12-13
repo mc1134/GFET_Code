@@ -9,6 +9,7 @@ import scipy.optimize
 import csv
 from splitz_new_opt import splitz_new_opt
 import time
+import os
 
 import matlab_helpers as matlab
 import helperfuncs as helpers
@@ -83,6 +84,9 @@ class GUI:
         self.initialize_plots()
 
         self.ssh_client = ssh_to_device()
+
+        self.local_firmware = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONSTANTS.LOCAL_FIRMWARE_FILE_NAME)
+        self.remote_firmware = CONSTANTS.REMOTE_FIRMWARE_PATH
 
         self.baseline_dirac = None
         self.sampling_dirac = None
@@ -220,7 +224,7 @@ class GUI:
             return
         self.feedback_str.set(f"Connected to {self.IP}.")
         helpers.print_debug("Uploading firmware to device...")
-        if not self.ssh_client.upload_firmware(CONSTANTS.LOCAL_FIRMWARE, CONSTANTS.REMOTE_FIRMWARE):
+        if not self.ssh_client.upload_firmware(self.local_firmware, self.remote_firmware):
             self.feedback_str.set("Could not upload firmware.")
             return
         self.feedback_str.set("Connect action completed.")
@@ -236,7 +240,7 @@ class GUI:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
         filename, mode = "TEST", "BASELINE" # TODO change this to user-input text
-        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, mode)
+        self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         downloaded, time_elapsed, start_time = False, 0, time.time()
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
@@ -260,7 +264,7 @@ class GUI:
             self.feedback_str.set("Please run a baseline first")
             return
         filename, mode = "TEST", "SAMPLING"
-        self.ssh_client.collect_data(CONSTANTS.REMOTE_FIRMWARE, filename, mode)
+        self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         downloaded, time_elapsed, start_time = False, 0, time.time()
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
