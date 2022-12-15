@@ -29,3 +29,6 @@ to discuss
 # data picked was the last sweep when it should have been a "middle" sweep
 
 # show score from q/c in the gui
+# kill process when finished getting csv file
+# remove csv file from remote after downloading
+# sampling file did not get retrieved

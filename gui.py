@@ -10,6 +10,7 @@ import csv
 from splitz_new_opt import splitz_new_opt
 import time
 import os
+import json
 
 import matlab_helpers as matlab
 import helperfuncs as helpers
@@ -23,35 +24,40 @@ class GUI:
         frame_controls: Defines the frame for buttons. Placed at row 0.
         frame_prompt: Defines the frame for the prompt. Placed at row 1.
         frame_plot: Defines the frame for the embedded matplotlib plots. Placed at row 2.
-        prompt_str: Text variable for displaying useful information, such as the dirac voltage.
         feedback_str: Text variable that is updated when a button is pressed.
         fx, bx: The forward and backward arrays of voltage vs Ids.
     """
     def __init__(self):
+        # initializing main window
         self.window_root = tkinter.Tk()
         self.window_root.title("QC and Data Analytics GUI")
         self.window_root.geometry("1500x640")
 
+        # configuring valid window grid positions
         self.window_root.grid_rowconfigure(0)
         self.window_root.grid_rowconfigure(1)
         self.window_root.grid_rowconfigure(2)
         self.window_root.grid_columnconfigure(0)
 
-        self.prompt_str = tkinter.StringVar() # TODO currently unused
+        # configuring textvariables for GUI
+        self.qc_score_str = tkinter.StringVar()
+        self.qc_score_str.set("No Q/C Test run.")
         self.feedback_str = tkinter.StringVar()
+        self.feedback_str.set("This is the temporary label for displaying button feedback information.")
         self.IP = tkinter.StringVar()
         self.IP.set("10.0.0.0")
-        self.feedback_str.set("This is the temporary label for displaying button feedback information.")
 
+        # defining frames
         self.frame_controls = tkinter.Frame(self.window_root, background = "Green") # frame for buttons etc.
         self.frame_prompt = tkinter.Frame(self.window_root, background = "Blue") # frame for displaying prompt
         self.frame_plot = tkinter.Frame(self.window_root, background = "Red") # frame for the plot
 
+        # defining frame positioning
         self.frame_controls.grid(row = 0, column = 0)
         self.frame_prompt.grid(row = 1, column = 0)
         self.frame_plot.grid(row = 2, column = 0)
 
-        # connect controls
+        # connection controls
         ttk.Label(self.frame_controls, text = "Enter IP Address").grid(row = 0, column = 0)
         self.IP_entry = ttk.Entry(self.frame_controls, textvariable = self.IP)
         self.IP_entry.grid(row = 0, column = 1)
@@ -74,28 +80,35 @@ class GUI:
 
         # analytics controls
         ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
-        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 4, column = 1)
+        ttk.Label(self.frame_controls, text = "Q/C Results: ").grid(row = 4, column = 1)
+        ttk.Label(self.frame_controls, textvariable = self.qc_score_str).grid(row = 4, column = 2)
+        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 4, column = 3)
 
         # TEST BUTTON
         ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 5, column = 0)
 
-        ttk.Label(self.frame_prompt, text = "Prompt String:").grid(row = 0, column = 0)
-        ttk.Label(self.frame_prompt, textvariable = self.prompt_str).grid(row = 0, column = 1)
-
+        # text fields
         ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
         ttk.Label(self.frame_prompt, textvariable = self.feedback_str).grid(row = 1, column = 1)
 
+        # for embedding matplotlib plots into the GUI
         self.fig = None
+        self.empty_fig = None
         self.initialize_plots()
 
+        # ssh client
         self.ssh_client = ssh_to_device()
 
+        # strings for firmware file locations
         self.local_firmware = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONSTANTS.LOCAL_FIRMWARE_FILE_NAME)
         self.remote_firmware = CONSTANTS.REMOTE_FIRMWARE_PATH
 
+        # analytics variables
+        self.fx = None
         self.baseline_dirac = None
         self.sampling_dirac = None
 
+        # variables for maintaining state of additional tkinter widgets
         self.popup_entry = None
 
         self.window_root.mainloop()
@@ -104,7 +117,6 @@ class GUI:
         self.feedback_str.set("Test button pressed")
         def popup_action():
             self.IP = self.IP_entry.get()
-            self.prompt_str.set(self.IP)
         self.text_popup("title of popup", "prompt", popup_action)
         filename = filedialog.askopenfilename()
         self.feedback_str.set(f"File name: {filename}")
@@ -359,7 +371,6 @@ class GUI:
         fil = matlab.movmean(yn, 3)
         maxn = max([abs(fil[i]-yn[i]) for i in range(len(yn))])
         avgn = np.mean([abs(fil[i]-yn[i]) for i in range(len(yn))])
-        self.prompt_str.set(f"Moving mean maximum: {maxn}; Moving mean average: {avgn}")
 
         # Linear fit: split at minima and calculate slope on either side
         val = min(yn)
@@ -367,18 +378,63 @@ class GUI:
         minx = xn[xmin]
         bl = np.polynomial.polynomial.polyfit(xn[:xmin], yn[:xmin], 1) # returns numpy.nd_array([c_1, c_2]) for y = c_1 * x + c_2
         br = np.polynomial.polynomial.polyfit(xn[xmin:], yn[xmin:], 1)
-        print("left linear fit:", bl, "right linear fit:", br)
+        helpers.print_debug(f"left linear fit: {bl}; right linear fit: {br}")
         lsl = bl[1]
         rsl = br[1]
         # defining functions for linear fit
 
-        sco, message = helpers.score(hyperbolic_fit.x, parabolic_fit, {"maxn": maxn, "avgn": avgn}, {"lsl": lsl, "rsl": rsl})
-        self.feedback_str.set(f"Score: {sco}\n{message}")
-        print(f"Score: {sco}\n{message}")
+        score, message = helpers.score(hyperbolic_fit.x, parabolic_fit, {"maxn": maxn, "avgn": avgn}, {"lsl": lsl, "rsl": rsl})
+        self.qc_score_str.set(f"Score: {score}\n{message}")
+        helpers.print_debug(f"Score: {score}\n{message}")
 
         self.plot_qc_approximations(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
         #self.plot_to_window(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
         #self.feedback_str.set("Q/C Test action not implemented yet.")
+
+        output_qc_parameters = {
+            "hyperbolic fit": {
+                "params": {
+                    "a": hyperbolic_fit.x[0],
+                    "b": hyperbolic_fit.x[1],
+                    "c": hyperbolic_fit.x[2],
+                    "h": hyperbolic_fit.x[3]
+                },
+                "model": "(b**2 * ((x - h)**2 / (a**2) + 1))**0.5 + c"
+            },
+            "parabolic fit": {
+                "params": {
+                    "a": parabolic_fit[0],
+                    "b": parabolic_fit[1],
+                    "c": parabolic_fit[2]
+                },
+                "model": "(((x - a)**2/4) * c) + b"
+            },
+            "linear fit": {
+                "params": {
+                    "left fit": {
+                        "b": bl[0],
+                        "m": bl[1]
+                    },
+                    "right fit": {
+                        "b": br[0],
+                        "m": br[1]
+                    }
+                },
+                "model": "m * x + b"
+            },
+            "moving average filter fit": {
+                "params": {
+                    "moving mean maximum": maxn,
+                    "moving mean average": avgn
+                }
+            },
+            "score": {
+                "score": score,
+                "message": message
+            }
+        }
+        with open(f"qc_params_{helpers.get_time()}.json", "w") as f:
+            f.write(json.dumps(output_qc_parameters, indent = 4))
 
     def results_action(self):
         # run sweepmean2: this calculates dirac_shift (difference in average minima)
@@ -393,13 +449,17 @@ class GUI:
         # plot second forward sweeps
         sweep_num = 1 # run QC test on the second sweep
         x_baseline = [obj[0] for obj in self.baseline_fx[sweep_num]]
-        x_baseline = [item / max(x_baseline) for item in x_baseline]
         y_baseline = [obj[1] for obj in self.baseline_fx[sweep_num]]
-        y_baseline = [item / max(y_baseline) for item in y_baseline]
         x_sampling = [obj[0] for obj in self.sampling_fx[sweep_num]]
-        x_sampling = [item / max(x_sampling) for item in x_sampling]
         y_sampling = [obj[1] for obj in self.sampling_fx[sweep_num]]
-        y_sampling = [item / max(y_sampling) for item in y_sampling]
         self.plot_results(x_baseline, y_baseline, x_sampling, y_sampling)
         self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
+
+        output_dirac_shift = {
+            "sweep number": sweep_num + 1,
+            "absolute dirac shift": dirac_shift
+        }
+
+        with open(f"dirac_shift_{helpers.get_time()}.json", "w") as f:
+            f.write(json.dumps(output_dirac_shift, indent = 4))
 

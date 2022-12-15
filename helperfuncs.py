@@ -76,14 +76,14 @@ def score(hyperbolic_fit, parabolic_fit, moving_mean_fit, linear_fit):
 ##### helper fitting functions #####
 def par_model(fun_params, x): # this will evaluate the parabolic fit function
     a, b, c = fun_params[0], fun_params[1], fun_params[2]
-    return (((x-a)**2/4)*c)+b
+    return (((x - a)**2 / 4) * c) + b
 
 def par_residuals(fun_params, xn, yn): # this evaluate the normalized residuals of the par_model function
     return np.linalg.norm(yn - par_model(fun_params, xn))
 
 def hyp_model(fun_params, x): # this will evaluate the hyperbolic fit function
     a, b, c, h = fun_params[0], fun_params[1], fun_params[2], fun_params[3]
-    return np.sqrt(b**2 * ((x-h)**2/(a**2) + 1)) + c
+    return np.sqrt(b**2 * ((x - h)**2 / (a**2) + 1)) + c
 
 def hyp_residuals(fun_params, xn, yn): # this will evaluate the residuals of the hyp_model function
     return yn - hyp_model(fun_params, xn)
