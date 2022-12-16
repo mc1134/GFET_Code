@@ -40,7 +40,9 @@ class ssh_to_device:
         return stdout
 
     def collect_data(self, firmware_file, file_name = "", mode = "BASELINE"):
-        resp = self.execute(f"sudo nice -n 1 python3 {firmware_file} {file_name} {mode}")
+        cmd = f"sudo nice -n 1 python3 {firmware_file} {file_name} {mode}"
+        print(f"RUNNING COMMAND: `{cmd}`")
+        resp = self.execute(cmd)
 
     def upload_firmware(self, local_firmware, remote_firmware):
         if not self.client:

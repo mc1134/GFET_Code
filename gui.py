@@ -42,6 +42,8 @@ class GUI:
         # configuring textvariables for GUI
         self.qc_score_str = tkinter.StringVar()
         self.qc_score_str.set("No Q/C Test run.")
+        self.abs_dirac_shift = tkinter.StringVar()
+        self.abs_dirac_shift.set("")
         self.feedback_str = tkinter.StringVar()
         self.feedback_str.set("This is the temporary label for displaying button feedback information.")
         self.IP = tkinter.StringVar()
@@ -67,7 +69,7 @@ class GUI:
 
         # file name entry
         ttk.Label(self.frame_controls, text = "Enter file name to be used in baseline/sampling data collection").grid(row = 1, column = 0)
-        self.filename_entry = ttk.Entry(self.frame_controls)
+        self.filename_entry = ttk.Entry(self.frame_controls, text = helpers.get_time())
         self.filename_entry.grid(row = 1, column = 1)
 
         # baseline controls
@@ -82,7 +84,9 @@ class GUI:
         ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
         ttk.Label(self.frame_controls, text = "Q/C Results: ").grid(row = 4, column = 1)
         ttk.Label(self.frame_controls, textvariable = self.qc_score_str).grid(row = 4, column = 2)
-        ttk.Button(self.frame_controls, text = "Results", command = self.results_action).grid(row = 4, column = 3)
+        ttk.Button(self.frame_controls, text = "Calculate Dirac Shift", command = self.results_action).grid(row = 5, column = 0)
+        ttk.Label(self.frame_controls, text = "Absolute Dirac Shift: ").grid(row = 5, column = 1)
+        ttk.Label(self.frame_controls, textvariable = self.abs_dirac_shift).grid(row = 5, column = 2)
 
         # TEST BUTTON
         ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 5, column = 0)
@@ -257,18 +261,25 @@ class GUI:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
         filename, mode = self.filename_entry.get(), "BASELINE"
+        if filename == "":
+            self.feedback_str.set("Cannot run baseline using empty file name.")
+            return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_baseline_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
+        remote_baseline_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
-            downloaded = self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_baseline_raw_data_file)
+            downloaded = self.ssh_client.download_file(remote_baseline_raw_data_file, local_baseline_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
         if not downloaded:
             self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Baseline data file was not downloaded.")
             return
+        else:
+            helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds. Removing from device...")
+            self.ssh_client.delete_file(remote_baseline_raw_data_file)
         self.read_raw_data(local_baseline_raw_data_file)
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
@@ -282,18 +293,25 @@ class GUI:
             self.feedback_str.set("Please run a baseline first")
             return
         filename, mode = self.filename_entry.get(), "SAMPLING"
+        if filename == "":
+            self.feedback_str.set("Cannot run sampling using empty file name.")
+            return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
         local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_sampling_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
+        remote_sampling_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
-            downloaded = self.ssh_client.download_file(f"/home/root/{filename}_{mode}_RAW_DATA.csv", local_sampling_raw_data_file)
+            downloaded = self.ssh_client.download_file(remote_sampling_raw_data_file, local_sampling_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
         if not downloaded:
             self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Sampling data file was not downloaded.")
             return
+        else:
+            helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds. Removing from device...")
+            self.ssh_client.delete_file(remote_sampling_raw_data_file)
         self.read_raw_data(local_sampling_raw_data_file)
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
