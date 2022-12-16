@@ -1290,17 +1290,25 @@ try:
     THREAD_SAMPLING_MODE_SAMPLE = 2
     THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE = 3
 
+    if sample_mode == "BASELINE":
+        sample_mode = THREAD_SAMPLING_MODE_BASELINE
+    elif sample_mode == "SAMPLING":
+        sample_mode = THREAD_SAMPLING_MODE_SAMPLE
+    else:
+        print(f"Warning: sample_mode {sample_mode} not recognized. Should be either 'BASELINE' or 'SAMPLING'.")
+        exit()
+
     #FILE NAME FROM TIMESTAMP:
     if (use_default_filename):
         timestamp_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     else:
         timestamp_filename = file_name
-    thread_sampling = samplingThread(1, "Thread-Sampling", THREAD_SAMPLING_MODE_BASELINE, timestamp_filename) #BASE
-    thread_led = ledThread(2, "Thread-LED", THREAD_SAMPLING_MODE_BASELINE)
+    thread_sampling = samplingThread(1, "Thread-Sampling", sample_mode, timestamp_filename) #BASE
+    thread_led = ledThread(2, "Thread-LED", sample_mode)
     thread_cancel = cancelThread(3, "Thread-Cancel")
 
     log("FETCHING DATA...\n")
-    print("FETCING DATA")
+    print("FETCHING DATA")
 
     #conn.sendall(b"###BUTTON 2 PRESSED AND SAMPLING###")
 
