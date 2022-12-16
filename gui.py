@@ -465,7 +465,7 @@ class GUI:
             return
         dirac_shift = abs(self.baseline_dirac["mean"] - self.sampling_dirac["mean"])
         # plot second forward sweeps
-        sweep_num = 1 # run QC test on the second sweep
+        sweep_num = 2 # run QC test on the second sweep
         # TODO change sweep num
         x_baseline = [obj[0] for obj in self.baseline_fx[sweep_num]]
         y_baseline = [obj[1] for obj in self.baseline_fx[sweep_num]]
