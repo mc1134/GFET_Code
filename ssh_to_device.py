@@ -83,3 +83,15 @@ class ssh_to_device:
             print(f"Could not delete file {file} from device")
             print(f"Reason: {e}")
             return False
+
+    def kill_script(self):
+        if not self.client:
+            print("Client is not connected. Need to connect first.")
+            return False
+        try:
+            stdin, stdout, stderr = self.client.exec_command("#TODO")
+            return True
+        except Exception as e:
+            print("Could not kill script from device")
+            print(f"Reason: {e}")
+            return False

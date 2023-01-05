@@ -159,17 +159,23 @@ class GUI:
         hyperbolic_plot.plot(xdata, ydata, label="Data")
         hyperbolic_plot.plot(xdata, helpers.hyp_model(hyperbolic_fit, xdata), label="Hyperbolic fit")
         hyperbolic_plot.legend()
+        hyperbolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
+        hyperbolic_plot.set_ylabel("Current (scaled w.r.t max I)")
         #hyperbolic_plot.title("Hyperbolic data and model") # TODO find a way to add titles to the plots
         parabolic_plot = self.fig.add_subplot(1, 3, 2)
         parabolic_plot.plot(xdata, ydata, label="Data")
         parabolic_plot.plot(xdata, helpers.par_model(parabolic_fit, xdata), label="Parabolic fit")
         parabolic_plot.legend()
+        parabolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
+        parabolic_plot.set_ylabel("Current (scaled w.r.t max I)")
         #parabolic_plot.title("Parabolic fit")
         linear_plot = self.fig.add_subplot(1, 3, 3)
         linear_plot.plot(xdata, ydata, label="Data")
         linear_plot.plot(xdata, helpers.lin_model(bl, xdata), label="Left linear fit")
         linear_plot.plot(xdata, helpers.lin_model(br, xdata), label="Right linear fit")
         linear_plot.legend()
+        linear_plot.set_xlabel("Voltage (scaled w.r.t max V)")
+        linear_plot.set_ylabel("Current (scaled w.r.t max I)")
         #linear_plot.title("Linear data and model")
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
@@ -203,6 +209,8 @@ class GUI:
         result_plot.plot(x_baseline, y_baseline, label="Baseline")
         result_plot.plot(x_sampling, y_sampling, label="Sampling")
         result_plot.legend()
+        result_plot.set_xlabel("Voltage (V)")
+        result_plot.set_ylabel("Current (I)")
         #result_plot.title("Plot of second forward sweeps for baseline and sample data")
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
@@ -241,26 +249,26 @@ class GUI:
     ##### Button actions #####
 
     def connect_action(self):
+        def print_stuff(s):
+            helpers.print_debug(s)
+            self.feedback_str.set(s)
         self.IP = self.IP_entry.get()
         if not helpers.validate_ip(self.IP):
-            self.feedback_str.set(f'The IP address "{self.IP}" is not valid.')
+            print_stuff(f'The IP address "{self.IP}" is not valid.')
             return
-        helpers.print_debug(f"Connecting to device ({self.IP})...")
+        print_stuff(f"Connecting to device ({self.IP})...")
         if not self.ssh_client.connect(self.IP, CONSTANTS.PORT):
-            self.feedback_str.set(f"Could not connect to {self.IP}.")
+            print_stuff(f"Could not connect to {self.IP}.")
             return
-        self.feedback_str.set(f"Connected to {self.IP}.")
-        helpers.print_debug("Uploading firmware to device...")
+        print_stuff(f"Connected to {self.IP}. Uploading firmware to device...")
         if not self.ssh_client.upload_firmware(self.local_firmware, self.remote_firmware):
-            self.feedback_str.set("Could not upload firmware.")
+            print_stuff("Could not upload firmware.")
             return
-        self.feedback_str.set("Connect action completed.")
-        #self.feedback_str.set("Connect action not implemented yet.")
+        print_stuff("Connected to SSH device.")
 
     def disconnect_action(self):
         self.ssh_client.disconnect()
         self.feedback_str.set("Disconnected from SSH device.")
-        #self.feedback_str.set("Disconnect action not implemented yet.")
 
     def baseline_action(self):
         if not self.ssh_client.connected:
@@ -286,7 +294,11 @@ class GUI:
             return
         else:
             helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds. Removing from device...")
-            self.ssh_client.delete_file(remote_baseline_raw_data_file)
+            if not self.ssh_client.delete_file(remote_baseline_raw_data_file):
+                helpers.print_debug(f"Warning: file {remote_baseline_raw_data_file} was not removed from device.")
+        helpers.print_debug(f"Ending process from device...")
+        if not self.ssh_client.kill_script():
+            helpers.print_debug("Warning: process not ended.")
         self.read_raw_data(local_baseline_raw_data_file)
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
@@ -320,7 +332,11 @@ class GUI:
             return
         else:
             helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds. Removing from device...")
-            self.ssh_client.delete_file(remote_sampling_raw_data_file)
+            if not self.ssh_client.delete_file(remote_sampling_raw_data_file):
+                helpers.print_debug(f"Warning: file {remote_sampling_raw_data_file} was not removed from device.")
+        helpers.print_debug("Ending process from device...")
+        if not self.ssh_client.kill_script():
+            helpers.print_debug("Warning: process not ended.")
         self.read_raw_data(local_sampling_raw_data_file)
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
@@ -478,8 +494,7 @@ class GUI:
             return
         dirac_shift = abs(self.baseline_dirac["mean"] - self.sampling_dirac["mean"])
         # plot second forward sweeps
-        sweep_num = 2 # run QC test on the second sweep
-        # TODO change sweep num
+        sweep_num = 1 # run QC test on the second sweep
         x_baseline = [obj[0] for obj in self.baseline_fx[sweep_num]]
         y_baseline = [obj[1] for obj in self.baseline_fx[sweep_num]]
         x_sampling = [obj[0] for obj in self.sampling_fx[sweep_num]]

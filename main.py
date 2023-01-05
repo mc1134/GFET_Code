@@ -1,7 +1,9 @@
+print("Loading modules...")
 from gui import GUI
 
 
 def main():
+	print("Loading GUI...")
 	GUI()
 	print("Done.")
 
@@ -15,9 +17,12 @@ if __name__ == "__main__":
 # HIGH PRIORITY
 # ENHANCEMENT: imports for microcontroller: openpyxl
 #   new devices to come soon
+#   DONE
 # BUG: data picked was the last sweep when it should have been a "middle" sweep when running analytics (qc/dirac)
 # ENHANCEMENT: feedback while waiting for file when clicking baseline or sample buttons
+#   DONE
 # ENHANCEMENT: begin testing compiling the program into a single executable
+#   DONE
 
 # Medium priority
 # ENHANCEMENT: implement a drop down with the detected list of ip addresses and you choose one then click connect
@@ -27,11 +32,15 @@ if __name__ == "__main__":
 #   solution 2: write a standalone script that kills all running processes on the microcontroller
 #   when running firmware program manually by SSHing into device, need to CTRL+C twice to exit
 # ENHANCEMENT: remove csv file from remote after downloading
+#   DONE
 
 # Low priority
 # ENHANCEMENT: add axes to graphs
 # ENHANCEMENT: add title text to graphs
 # ENHANCEMENT: put some feedback to the terminal when and after connecting successfully
+#   DONE
 # ENHANCEMENT: notify the user if the ssh connection breaks any time
 # ENHANCEMENT: rename "samplingThread" to "data collection" etc. (NOT 'sampling' from BASELINE/SAMPLING)
+#   DONE
 # ENHANCEMENT: when writing results with results button, add filenames for both baseline and sample files used into the JSON output
+#   DONE
