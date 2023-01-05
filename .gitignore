@@ -3,3 +3,6 @@ __pycache__
 data/*
 other_assets/*
 *.json
+build/*
+dist/*
+main.spec
