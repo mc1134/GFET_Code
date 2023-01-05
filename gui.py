@@ -31,7 +31,7 @@ class GUI:
         # initializing main window
         self.window_root = tkinter.Tk()
         self.window_root.title("QC and Data Analytics GUI")
-        self.window_root.geometry("1500x640")
+        self.window_root.geometry("1500x720")
 
         # configuring valid window grid positions
         self.window_root.grid_rowconfigure(0)
@@ -84,12 +84,12 @@ class GUI:
         ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
         ttk.Label(self.frame_controls, text = "Q/C Results: ").grid(row = 4, column = 1)
         ttk.Label(self.frame_controls, textvariable = self.qc_score_str).grid(row = 4, column = 2)
-        ttk.Button(self.frame_controls, text = "Calculate Dirac Shift", command = self.results_action).grid(row = 5, column = 0)
+        ttk.Button(self.frame_controls, text = "Calculate Dirac Shift", command = self.calculate_dirac_action).grid(row = 5, column = 0)
         ttk.Label(self.frame_controls, text = "Absolute Dirac Shift: ").grid(row = 5, column = 1)
         ttk.Label(self.frame_controls, textvariable = self.abs_dirac_shift).grid(row = 5, column = 2)
 
         # TEST BUTTON
-        ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 5, column = 0)
+        ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 6, column = 0)
 
         # text fields
         ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
@@ -271,6 +271,7 @@ class GUI:
         remote_baseline_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
+            self.feedback_str.set(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(remote_baseline_raw_data_file, local_baseline_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
@@ -303,6 +304,7 @@ class GUI:
         remote_sampling_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
+            self.feedback_str.set(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(remote_sampling_raw_data_file, local_sampling_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
@@ -454,7 +456,7 @@ class GUI:
         with open(f"qc_params_{helpers.get_time()}.json", "w") as f:
             f.write(json.dumps(output_qc_parameters, indent = 4))
 
-    def results_action(self):
+    def calculate_dirac_action(self):
         # run sweepmean2: this calculates dirac_shift (difference in average minima)
         # refer to Main script and Process_new_min script
         if self.baseline_dirac is None:
@@ -478,6 +480,7 @@ class GUI:
             "sweep number": sweep_num + 1,
             "absolute dirac shift": dirac_shift
         }
+        self.abs_dirac_shift.set(dirac_shift)
 
         with open(f"dirac_shift_{helpers.get_time()}.json", "w") as f:
             f.write(json.dumps(output_dirac_shift, indent = 4))
