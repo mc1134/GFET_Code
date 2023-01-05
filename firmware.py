@@ -27,9 +27,9 @@ ADC_SAMPLING_RATE = 250  # DESIRED SAMPLING RATE FOR ADC
 # =================================================================================
 # THREAD VARIABLES
 # =================================================================================
-stop_sampling_process = False
+stop_data_collection_process = False
 running = True
-ready_for_sample = False
+ready_for_data_collection = False
 mean_dirac_forward_sweep = 0
 mean_dirac_reverse_sweep = 0
 
@@ -670,7 +670,7 @@ def conv_raw_adc_to_voltage(adc_value,channel_name):
 # ================================================================================
 # GPIO CONTROL : CANCEL THREAD, PRESS BUTTON #2 AND #3 when sampling to cancel
 # ================================================================================
-class cancelThread (threading.Thread):
+class cancel_thread (threading.Thread):
 
     def __init__(self, threadID, name):
         threading.Thread.__init__(self)
@@ -679,7 +679,7 @@ class cancelThread (threading.Thread):
 
     def run(self):
 
-        global stop_sampling_process
+        global stop_data_collection_process
 
         while True:
             valueFile_button2 = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_BUTTON2+'/value', 'r')
@@ -692,7 +692,7 @@ class cancelThread (threading.Thread):
 
             if(button_pressed2 == '0' and button_pressed3 == '0'):
                 print("BOTH BUTTONS PRESSED in cancelthread...\n")
-                stop_sampling_process = True
+                stop_data_collection_process = True
 
             time.sleep(1)
                 
@@ -701,21 +701,21 @@ class cancelThread (threading.Thread):
 # ================================================================================
 # GPIO CONTROL : BLUE LED THREAD, blinking while measureing
 # ================================================================================
-class ledThread (threading.Thread):
+class led_thread (threading.Thread):
 
     def __init__(self, threadID, name, mode):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
-        self.sampling_mode = mode
+        self.data_collection_mode = mode
 
     def run(self):
 
         global running
-        global ready_for_sample
+        global ready_for_data_collection
 
         while(running):
-            if(self.sampling_mode == THREAD_SAMPLING_MODE_BASELINE):#BASELINE
+            if(self.data_collection_mode == THREAD_DATA_COLLECTION_MODE_BASELINE):#BASELINE
                 valueFile_LED_RGB_BLUE = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_LED_RGB_BLUE+'/value', 'w')
                 time_start = time.time()
                 while time.time()-time_start < SEC+2 and running:
@@ -731,11 +731,11 @@ class ledThread (threading.Thread):
                 #FINISHED SAMPLING OR CANCELLED BASELINE READ - EXIT THREAD
                 return
 
-            elif(self.sampling_mode == THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE):#SAMPLE
+            elif(self.data_collection_mode == THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE):#SAMPLE
                 valueFile_LED_RGB_GREEN = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_LED_RGB_GREEN+'/value', 'w')
                 time_start = time.time()
                 
-                while running and not ready_for_sample: # time.time()-time_start < SEC+2: #TODO: HOW LONG TO WAIT FOR A SAMPLE???
+                while running and not ready_for_data_collection: # time.time()-time_start < SEC+2: #TODO: HOW LONG TO WAIT FOR A SAMPLE???
 
                     valueFile_LED_RGB_GREEN.write(GPIO_VAL_HI)
                     valueFile_LED_RGB_GREEN.flush()
@@ -793,22 +793,19 @@ class ledThread (threading.Thread):
 # ================================================================================
 # SAMPLING THREAD
 # ================================================================================
-class samplingThread (threading.Thread):
+class data_collection_thread (threading.Thread):
 
-    sampling_mode = 0
+    data_collection_mode = 0
     filename_str = ""
 
     def __init__(self, threadID, name, mode, timestamp):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.name = name
-        self.sampling_mode = mode #BASELINE OR SAMPLING
+        self.data_collection_mode = mode #BASELINE OR SAMPLING
         self.filename_str = timestamp
 
     def run(self):
-        #   print ("Starting " + self.name)
-        #   print_time(self.name, self.counter, 5)
-        #   print ("Exiting " + self.name)
 
         # INITIATE ARRAYS
         # =============================================================
@@ -843,8 +840,8 @@ class samplingThread (threading.Thread):
         global mean_dirac_reverse_sweep
 
     
-        # START SAMPLING LOOP
-        log("samplingThread: Starting sampling loop")
+        # START DATA COLLECTION LOOP
+        log("data_collection_thread: Starting data collection loop")
         while (((t_start+SEC) > time.time()) or (index_t < SEC*ADC_SAMPLING_RATE)):  # Sample for x secs
 
             #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
@@ -899,7 +896,7 @@ class samplingThread (threading.Thread):
             index_t += 1
 
         t_end = time.time()
-        log("samplingThread: post processing")
+        log("data_collection_thread: post processing")
 
         # =============================================================================
         # POST PROCESSING - FIND SECTIONS BETWEEN PEAKS ON TRIAGLE
@@ -993,7 +990,7 @@ class samplingThread (threading.Thread):
                     if(i == NN):
                         break
 
-                    # & sec_used_counter_reverse<4): #NEXT SECTION IS A FORWARD SWEEP, hence a full senction has been captured
+                    # & sec_used_counter_reverse<4): #NEXT SECTION IS A FORWARD SWEEP, hence a full section has been captured
                     if(_peak[i] == -1):
                         reverse_sections_used[sec_used_counter_reverse] = 1
                         sec_used_counter_reverse += 1
@@ -1022,7 +1019,7 @@ class samplingThread (threading.Thread):
                     if(i == NN):
                         break
 
-                    # & sec_used_counter_forward<4): #NEXT SECTION IS A REVERSE SWEEP, hence a full senction has been captured
+                    # & sec_used_counter_forward<4): #NEXT SECTION IS A REVERSE SWEEP, hence a full section has been captured
                     if(_peak[i] == 1):
                         forward_sections_used[sec_used_counter_forward] = 1
                         sec_used_counter_forward += 1
@@ -1093,10 +1090,9 @@ class samplingThread (threading.Thread):
 
             idx_low = np.abs(Vgate_prime - fit_low).argmin()
             idx_high = np.abs(Vgate_prime - fit_high).argmin()
-            # print(idx_low,idx_high)
 
         # =============================================================================
-        # CREATE TIME STANP FOR FILES
+        # CREATE TIME STAMP FOR FILES
         # =============================================================================
         print("SAVING DATA...\n")
 
@@ -1106,7 +1102,7 @@ class samplingThread (threading.Thread):
 
         raw_data_filename = ""
 
-        if self.sampling_mode == THREAD_SAMPLING_MODE_BASELINE: #BASELINE
+        if self.data_collection_mode == THREAD_DATA_COLLECTION_MODE_BASELINE: #BASELINE
             raw_data_filename = self.filename_str + "_BASELINE_RAW_DATA.csv"
 
         else: #SAMPLING
@@ -1116,7 +1112,7 @@ class samplingThread (threading.Thread):
         # ===========================================================
         # WRITE DATA TO FILE
         # ===========================================================
-        log("samplingThread: writing data to file")
+        log("data_collection_thread: writing data to file")
         #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
         if not running:
             return
@@ -1249,7 +1245,7 @@ try:
     write_init_config() #REQUIRED
     read_config(True)
 
-    first_entry_in_sampling_loop = True
+    first_entry_in_data_collection_loop = True
 
 
     #================================================================================
@@ -1266,7 +1262,7 @@ try:
             is_filename_set = True
 
         if i == 2:
-            sample_mode = arg # this is either "BASELINE" or "SAMPLING"
+            data_collection_mode = arg # this is either "BASELINE" or "SAMPLING"
 
     if is_filename_set:
         log("------------------------------")
@@ -1275,27 +1271,27 @@ try:
         log("------------------------------")
         log('No filename received - Using default time/date filename')
         use_default_filename = True
-    print(f"Detected sample mode: {sample_mode}")
+    print(f"Detected sample mode: {data_collection_mode}")
 
     #RESET BOOLEAN FOR MANAGING THREADS
-    stop_sampling_process = False
+    stop_data_collection_process = False
     running = True
-    ready_for_sample = False
+    ready_for_data_collection = False
 
     # START BLUE LED THREAD
     # SOURCE: https://www.tutorialspoint.com/python3/python_multithreading.htm
 
     #DEFINES - MODE TO TOP SOMEWHERE
-    THREAD_SAMPLING_MODE_BASELINE = 1
-    THREAD_SAMPLING_MODE_SAMPLE = 2
+    THREAD_DATA_COLLECTION_MODE_BASELINE = 1
+    THREAD_DATA_COLLECTION_MODE_SAMPLING = 2
     THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE = 3
 
-    if sample_mode == "BASELINE":
-        sample_mode = THREAD_SAMPLING_MODE_BASELINE
-    elif sample_mode == "SAMPLING":
-        sample_mode = THREAD_SAMPLING_MODE_SAMPLE
+    if data_collection_mode == "BASELINE":
+        data_collection_mode = THREAD_DATA_COLLECTION_MODE_BASELINE
+    elif data_collection_mode == "SAMPLING":
+        data_collection_mode = THREAD_DATA_COLLECTION_MODE_SAMPLING
     else:
-        print(f"Warning: sample_mode {sample_mode} not recognized. Should be either 'BASELINE' or 'SAMPLING'.")
+        print(f"Warning: data_collection_mode {data_collection_mode} not recognized. Should be either 'BASELINE' or 'SAMPLING'.")
         exit()
 
     #FILE NAME FROM TIMESTAMP:
@@ -1303,33 +1299,30 @@ try:
         timestamp_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     else:
         timestamp_filename = file_name
-    thread_sampling = samplingThread(1, "Thread-Sampling", sample_mode, timestamp_filename) #BASE
-    thread_led = ledThread(2, "Thread-LED", sample_mode)
-    thread_cancel = cancelThread(3, "Thread-Cancel")
+    thread_data_collection = data_collection_thread(1, "Thread-Sampling", data_collection_mode, timestamp_filename)
+    thread_led = led_thread(2, "Thread-LED", data_collection_mode)
+    thread_cancel = cancel_thread(3, "Thread-Cancel")
 
     log("FETCHING DATA...\n")
     print("FETCHING DATA")
 
-    #conn.sendall(b"###BUTTON 2 PRESSED AND SAMPLING###")
-
-    log("Begin thread sampling for data") # this is either baseline or sampling depending on the command line arguments passed
-    print("Begin thread sampling for data")
-    thread_sampling.start()
+    log("Begin thread data collection") # this is either baseline or sampling depending on the command line arguments passed
+    print("Begin thread data collection")
+    thread_data_collection.start()
     thread_led.start()
-    if first_entry_in_sampling_loop:
+    if first_entry_in_data_collection_loop:
         thread_cancel.start()
-        first_entry_in_sampling_loop = False
+        first_entry_in_data_collection_loop = False
 
     print("Checking for cancel operation (there should be none)")
-    #CHECK FOR CANCEL OPERATION WHILE SAMPLING
-    thread_running = thread_sampling.is_alive()
+    #CHECK FOR CANCEL OPERATION WHILE COLLECTING DATA
+    thread_running = thread_data_collection.is_alive()
     while (thread_running):
-        if stop_sampling_process:
+        if stop_data_collection_process:
             running = False
             print("CANCELLED TEST...\n")
-            #conn.sendall(b"###CANCEL###")
             break
-        thread_running = thread_sampling.is_alive()
+        thread_running = thread_data_collection.is_alive()
         time.sleep(0.5)
     log("End thread sampling for data")
     print("End thread sampling for data")
@@ -1337,11 +1330,11 @@ try:
     #WAIT FOR LED THREAD TO FINISH
     thread_led.join(600)
 
-    raw_data_filename = f"{timestamp_filename}_{sample_mode}_RAW_DATA.csv"
+    raw_data_filename = f"{timestamp_filename}_{data_collection_mode}_RAW_DATA.csv"
 
     file_check_wait = 10
 
-    print("Waiting for file (whatever that means)")
+    print("Waiting for file")
     wait_for_file = True
     counter = 0
     while wait_for_file: 
@@ -1351,17 +1344,14 @@ try:
         time.sleep(2)
         counter += 1
         if(counter > file_check_wait):
-            #conn.sendall(b"###ERROR###")
             break
 
-    #conn.sendall(b"###END PROCESS###")
     print("End process. Joining threads...")
 
     thread_led.join()
     thread_cancel.join()
     print("Done.")
 finally:
-
     # CLOSE SPI ACCESS
     spi.close()
 
@@ -1372,10 +1362,3 @@ finally:
     os.system("echo 0 > /sys/class/gpio/gpio149/value")  # RGB RED
     os.system("echo 0 > /sys/class/gpio/gpio148/value")  # RGB GREEN
     os.system("echo 0 > /sys/class/gpio/gpio147/value")  # RGB BLUE
-
-    # CLOSE BUTTON AND LED GPIO FILES
-    # valueFile_button3.close()
-    # valueFile_LED_RGB_GREEN.close() #CLOSED IN THREAD
-    # GPIO.cleanup()
-
-    #print("###END PROCESS###")
