@@ -115,6 +115,11 @@ class GUI:
         # variables for maintaining state of additional tkinter widgets
         self.popup_entry = None
 
+        # file names used
+        self.baseline_filename = None
+        self.sampling_filename = None
+        self.fx_filename = None
+
         self.window_root.mainloop()
 
     def test_button_action(self):
@@ -211,6 +216,7 @@ class GUI:
 
     def read_raw_data(self, file):
         helpers.print_debug(f"Opening file {file}")
+        self.fx_filename = file
         Base = []
         with open(file) as csvfile:
             csvbuffer = csv.reader(csvfile, delimiter=',', quotechar='"')
@@ -285,6 +291,7 @@ class GUI:
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
+        self.baseline_filename = local_baseline_raw_data_file
 
     def sample_action(self):
         if not self.ssh_client.connected:
@@ -318,6 +325,7 @@ class GUI:
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
+        self.sampling_filename = local_sampling_raw_data_file
 
     def baseline_from_file_action(self):
         self.feedback_str.set("Selecting file...")
@@ -331,6 +339,7 @@ class GUI:
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
+        self.baseline_filename = local_baseline_raw_data_file
         self.feedback_str.set(f"Successfully loaded baseline file {local_baseline_raw_data_file}")
 
     def sample_from_file_action(self):
@@ -345,6 +354,7 @@ class GUI:
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
+        self.sampling_filename = local_sampling_raw_data_file
         self.feedback_str.set(f"Successfully loaded sampling file {local_sampling_raw_data_file}")
 
     def close_action(self): # currently unused. user can just click x button to close window
@@ -412,6 +422,7 @@ class GUI:
         #self.feedback_str.set("Q/C Test action not implemented yet.")
 
         output_qc_parameters = {
+            "data used": self.fx_filename,
             "hyperbolic fit": {
                 "params": {
                     "a": hyperbolic_fit.x[0],
@@ -477,6 +488,10 @@ class GUI:
         self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
 
         output_dirac_shift = {
+            "data used": {
+                "baseline": self.baseline_filename,
+                "sampling": self.sampling_filename
+            },
             "sweep number": sweep_num + 1,
             "absolute dirac shift": dirac_shift
         }
