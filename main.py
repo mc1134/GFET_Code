@@ -36,6 +36,7 @@ if __name__ == "__main__":
 
 # Low priority
 # ENHANCEMENT: add axes to graphs
+#   DONE
 # ENHANCEMENT: add title text to graphs
 # ENHANCEMENT: put some feedback to the terminal when and after connecting successfully
 #   DONE
