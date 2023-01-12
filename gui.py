@@ -40,14 +40,14 @@ class GUI:
         self.window_root.grid_columnconfigure(0)
 
         # configuring textvariables for GUI
-        self.qc_score_str = tkinter.StringVar()
-        self.qc_score_str.set("No Q/C Test run.")
-        self.abs_dirac_shift = tkinter.StringVar()
-        self.abs_dirac_shift.set("")
         self.feedback_str = tkinter.StringVar()
         self.feedback_str.set("This is the temporary label for displaying button feedback information.")
         self.IP = tkinter.StringVar()
         self.IP.set("10.0.0.0")
+
+        # configuring text variables used by the Text widgets
+        self.qc_score_str = "No Q/C Test run."
+        self.abs_dirac_shift = ""
 
         # defining frames
         self.frame_controls = tkinter.Frame(self.window_root, background = "Green") # frame for buttons etc.
@@ -83,13 +83,17 @@ class GUI:
         # analytics controls
         ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
         ttk.Label(self.frame_controls, text = "Q/C Results: ").grid(row = 4, column = 1)
-        ttk.Label(self.frame_controls, textvariable = self.qc_score_str).grid(row = 4, column = 2)
+        self.qc_score_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
+        self.qc_score_textbox.grid(row = 4, column = 2)
+        self.modify_Text(self.qc_score_textbox, self.qc_score_str)
         ttk.Button(self.frame_controls, text = "Calculate Dirac Shift", command = self.calculate_dirac_action).grid(row = 5, column = 0)
         ttk.Label(self.frame_controls, text = "Absolute Dirac Shift: ").grid(row = 5, column = 1)
-        ttk.Label(self.frame_controls, textvariable = self.abs_dirac_shift).grid(row = 5, column = 2)
+        self.abs_dirac_shift_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
+        self.abs_dirac_shift_textbox.grid(row = 5, column = 2)
+        self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
         # TEST BUTTON
-        ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 6, column = 0)
+        #ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 6, column = 0)
 
         # text fields
         ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
@@ -130,7 +134,7 @@ class GUI:
         filename = filedialog.askopenfilename()
         self.feedback_str.set(f"File name: {filename}")
 
-    ##### Additional TK components #####
+    ##### Additional TK components and methods #####
 
     def text_popup(self, title, prompt, button_action):
         window_popup = tkinter.Tk()
@@ -145,6 +149,13 @@ class GUI:
             window_popup.destroy()
         ttk.Button(window_popup, text = "Submit", command = close_popup).place(x = 0, y = 40)
         window_popup.mainloop()
+
+    def modify_Text(self, widget, text):
+        widget.config(state = "normal")
+        widget.config(height = len(str(text).split("\n")))
+        widget.delete("1.0", "end")
+        widget.insert("1.0", text)
+        widget.config(state = "disabled")
 
     ##### Plots #####
 
@@ -430,8 +441,9 @@ class GUI:
         # defining functions for linear fit
 
         score, message = helpers.score(hyperbolic_fit.x, parabolic_fit, {"maxn": maxn, "avgn": avgn}, {"lsl": lsl, "rsl": rsl})
-        self.qc_score_str.set(f"Score: {score}\n{message}")
-        helpers.print_debug(f"Score: {score}\n{message}")
+        self.qc_score_str = f"Score: {score}\n{message}"
+        self.modify_Text(self.qc_score_textbox, self.qc_score_str)
+        helpers.print_debug(self.qc_score_str)
 
         self.plot_qc_approximations(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
         #self.plot_to_window(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
@@ -510,7 +522,8 @@ class GUI:
             "sweep number": sweep_num + 1,
             "absolute dirac shift": dirac_shift
         }
-        self.abs_dirac_shift.set(dirac_shift)
+        self.abs_dirac_shift = dirac_shift
+        self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
         with open(f"dirac_shift_{helpers.get_time()}.json", "w") as f:
             f.write(json.dumps(output_dirac_shift, indent = 4))
