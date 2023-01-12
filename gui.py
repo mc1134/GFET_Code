@@ -92,9 +92,6 @@ class GUI:
         self.abs_dirac_shift_textbox.grid(row = 5, column = 2)
         self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
-        # TEST BUTTON
-        #ttk.Button(self.frame_controls, text = "TEST BUTTON", command = self.test_button_action).grid(row = 6, column = 0)
-
         # text fields
         ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
         ttk.Label(self.frame_prompt, textvariable = self.feedback_str).grid(row = 1, column = 1)
@@ -126,17 +123,10 @@ class GUI:
 
         self.window_root.mainloop()
 
-    def test_button_action(self):
-        self.feedback_str.set("Test button pressed")
-        def popup_action():
-            self.IP = self.IP_entry.get()
-        self.text_popup("title of popup", "prompt", popup_action)
-        filename = filedialog.askopenfilename()
-        self.feedback_str.set(f"File name: {filename}")
-
     ##### Additional TK components and methods #####
 
     def text_popup(self, title, prompt, button_action):
+        # Spawns a new window with an entry field and a submit button.
         window_popup = tkinter.Tk()
         window_popup.geometry("300x100")
         window_popup.title(title)
@@ -171,14 +161,14 @@ class GUI:
         hyperbolic_plot.plot(xdata, helpers.hyp_model(hyperbolic_fit, xdata), label="Hyperbolic fit")
         hyperbolic_plot.legend()
         hyperbolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
-        hyperbolic_plot.set_ylabel("Current (scaled w.r.t max I)")
+        hyperbolic_plot.set_ylabel("Current (scaled w.r.t max A)")
         #hyperbolic_plot.title("Hyperbolic data and model") # TODO find a way to add titles to the plots
         parabolic_plot = self.fig.add_subplot(1, 3, 2)
         parabolic_plot.plot(xdata, ydata, label="Data")
         parabolic_plot.plot(xdata, helpers.par_model(parabolic_fit, xdata), label="Parabolic fit")
         parabolic_plot.legend()
         parabolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
-        parabolic_plot.set_ylabel("Current (scaled w.r.t max I)")
+        parabolic_plot.set_ylabel("Current (scaled w.r.t max A)")
         #parabolic_plot.title("Parabolic fit")
         linear_plot = self.fig.add_subplot(1, 3, 3)
         linear_plot.plot(xdata, ydata, label="Data")
@@ -186,13 +176,14 @@ class GUI:
         linear_plot.plot(xdata, helpers.lin_model(br, xdata), label="Right linear fit")
         linear_plot.legend()
         linear_plot.set_xlabel("Voltage (scaled w.r.t max V)")
-        linear_plot.set_ylabel("Current (scaled w.r.t max I)")
+        linear_plot.set_ylabel("Current (scaled w.r.t max A)")
         #linear_plot.title("Linear data and model")
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
         self.feedback_str.set("Plotted the hyperbolic fit, parabolic fit, and linear fits with respect to the data.")
 
     def plot_to_window(self, xdata, ydata, hyperbolic_fit, parabolic_fit, bl, br):
+        # This method is deprecated. This will spawn a new window with the quality control plots.
         helpers.print_debug("Plotting hyperbolic data and model")
         plt.plot(xdata, ydata, label="Data")
         plt.plot(xdata, helpers.hyp_model(hyperbolic_fit.x, xdata), label="Hyperbolic fit")
@@ -213,15 +204,15 @@ class GUI:
         plt.title("Linear data and model")
         plt.show()
 
-    def plot_results(self, x_baseline, y_baseline, x_sampling, y_sampling):
+    def plot_dirac_voltage(self, x_baseline, y_baseline, x_sampling, y_sampling):
         helpers.print_debug("Plotting result graph")
         self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
         result_plot = self.fig.add_subplot(1, 3, 2)
         result_plot.plot(x_baseline, y_baseline, label="Baseline")
         result_plot.plot(x_sampling, y_sampling, label="Sampling")
         result_plot.legend()
-        result_plot.set_xlabel("Voltage (V)")
-        result_plot.set_ylabel("Current (I)")
+        result_plot.set_xlabel("Voltage (mV)")
+        result_plot.set_ylabel("Current (μA)")
         #result_plot.title("Plot of second forward sweeps for baseline and sample data")
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
@@ -390,9 +381,6 @@ class GUI:
         self.window_root.destroy()
 
     def qc_action(self):
-        # run curvefitting.py line 51+
-        # plot parabolic, hyperbolic, and linear approximations
-        # show text for the moving average approximation
         if self.fx is None:
             self.feedback_str.set("No forward sweep array in memory. Please run a baseline or sample.")
             return
@@ -447,7 +435,6 @@ class GUI:
 
         self.plot_qc_approximations(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
         #self.plot_to_window(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
-        #self.feedback_str.set("Q/C Test action not implemented yet.")
 
         output_qc_parameters = {
             "data used": self.fx_filename,
@@ -496,8 +483,6 @@ class GUI:
             f.write(json.dumps(output_qc_parameters, indent = 4))
 
     def calculate_dirac_action(self):
-        # run sweepmean2: this calculates dirac_shift (difference in average minima)
-        # refer to Main script and Process_new_min script
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first.")
             return
@@ -505,13 +490,13 @@ class GUI:
             self.feedback_str.set("Please run a sample first.")
             return
         dirac_shift = abs(self.baseline_dirac["mean"] - self.sampling_dirac["mean"])
-        # plot second forward sweeps
+        dirac_shift = str(dirac_shift * 1000) + " mV"
         sweep_num = 1 # run QC test on the second sweep
-        x_baseline = [obj[0] for obj in self.baseline_fx[sweep_num]]
-        y_baseline = [obj[1] for obj in self.baseline_fx[sweep_num]]
-        x_sampling = [obj[0] for obj in self.sampling_fx[sweep_num]]
-        y_sampling = [obj[1] for obj in self.sampling_fx[sweep_num]]
-        self.plot_results(x_baseline, y_baseline, x_sampling, y_sampling)
+        x_baseline = [obj[0] * 1000    for obj in self.baseline_fx[sweep_num]] # voltage converted to millivolts
+        y_baseline = [obj[1] * 1000000 for obj in self.baseline_fx[sweep_num]] # amps converted to microamps
+        x_sampling = [obj[0] * 1000    for obj in self.sampling_fx[sweep_num]] # millivolts!
+        y_sampling = [obj[1] * 1000000 for obj in self.sampling_fx[sweep_num]] # microamps!
+        self.plot_dirac_voltage(x_baseline, y_baseline, x_sampling, y_sampling)
         self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
 
         output_dirac_shift = {
