@@ -10,6 +10,7 @@ class ssh_to_device:
     def __init__(self):
         self.client = None
         self.connected = False
+        self.cmd = ""
 
     def connect(self, IP_address, port=22):
         try:
@@ -41,6 +42,7 @@ class ssh_to_device:
 
     def collect_data(self, firmware_file, file_name = "", mode = "BASELINE"):
         cmd = f"sudo nice -n 1 python3 {firmware_file} {file_name} {mode}"
+        self.cmd = cmd
         print(f"RUNNING COMMAND: `{cmd}`")
         resp = self.execute(cmd)
 
@@ -89,7 +91,7 @@ class ssh_to_device:
             print("Client is not connected. Need to connect first.")
             return False
         try:
-            stdin, stdout, stderr = self.client.exec_command("#TODO")
+            stdin, stdout, stderr = self.client.exec_command(f'pkill -f "{self.cmd}"')
             return True
         except Exception as e:
             print("Could not kill script from device")
