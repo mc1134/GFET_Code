@@ -48,6 +48,9 @@ class GUI:
         # configuring text variables used by the Text widgets
         self.qc_score_str = "No Q/C Test run."
         self.abs_dirac_shift = ""
+        self.baseline_filename = "No baseline file loaded."
+        self.sampling_filename = "No sampling file loaded."
+        self.fx_filename = None
 
         # defining frames
         self.frame_controls = tkinter.Frame(self.window_root, background = "Green") # frame for buttons etc.
@@ -75,10 +78,16 @@ class GUI:
         # baseline controls
         ttk.Button(self.frame_controls, text = "Baseline", command = self.baseline_action).grid(row = 2, column = 0)
         ttk.Button(self.frame_controls, text = "Baseline from file", command = self.baseline_from_file_action).grid(row = 2, column = 1)
+        self.baseline_file_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
+        self.baseline_file_textbox.grid(row = 2, column = 2)
+        self.modify_Text(self.baseline_file_textbox, self.baseline_filename)
 
         # sample controls
         ttk.Button(self.frame_controls, text = "Sample", command = self.sample_action).grid(row = 3, column = 0)
         ttk.Button(self.frame_controls, text = "Sample from file", command = self.sample_from_file_action).grid(row = 3, column = 1)
+        self.sampling_file_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
+        self.sampling_file_textbox.grid(row = 3, column = 2)
+        self.modify_Text(self.sampling_file_textbox, self.sampling_filename)
 
         # analytics controls
         ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
@@ -115,11 +124,6 @@ class GUI:
 
         # variables for maintaining state of additional tkinter widgets
         self.popup_entry = None
-
-        # file names used
-        self.baseline_filename = None
-        self.sampling_filename = None
-        self.fx_filename = None
 
         self.window_root.mainloop()
 
@@ -306,6 +310,7 @@ class GUI:
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
         self.baseline_filename = local_baseline_raw_data_file
+        self.modify_Text(self.baseline_file_textbox, self.baseline_filename)
 
     def sample_action(self):
         if not self.ssh_client.connected:
@@ -344,6 +349,7 @@ class GUI:
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
         self.sampling_filename = local_sampling_raw_data_file
+        self.modify_Text(self.sampling_file_textbox, self.sampling_filename)
 
     def baseline_from_file_action(self):
         self.feedback_str.set("Selecting file...")
@@ -358,6 +364,7 @@ class GUI:
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
         self.baseline_filename = local_baseline_raw_data_file
+        self.modify_Text(self.baseline_file_textbox, self.baseline_filename)
         self.feedback_str.set(f"Successfully loaded baseline file {local_baseline_raw_data_file}")
 
     def sample_from_file_action(self):
@@ -373,6 +380,7 @@ class GUI:
         mina, mins, jmin = helpers.sweepmean(self.fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
         self.sampling_filename = local_sampling_raw_data_file
+        self.modify_Text(self.sampling_file_textbox, self.sampling_filename)
         self.feedback_str.set(f"Successfully loaded sampling file {local_sampling_raw_data_file}")
 
     def close_action(self): # currently unused. user can just click x button to close window
