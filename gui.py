@@ -69,6 +69,8 @@ class GUI:
         ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 2)
         ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 3)
         #ttk.Button(self.frame_controls, text = "Close", command = self.close_action).grid(row = 0, column = 4)
+        # help!
+        ttk.Button(self.frame_controls, text = "Help", command = self.help_action).grid(row = 0, column = 4)
 
         # file name entry
         ttk.Label(self.frame_controls, text = "Enter file name to be used in baseline/sampling data collection").grid(row = 1, column = 0)
@@ -521,3 +523,13 @@ class GUI:
         with open(f"dirac_shift_{helpers.get_time()}.json", "w") as f:
             f.write(json.dumps(output_dirac_shift, indent = 4))
 
+    def help_action(self):
+        self.feedback_str.set(f"Opened help window")
+        help_popup = tkinter.Tk()
+        window_height = len(CONSTANTS.HELP_STRING.split("\n")) * 16
+        help_popup.geometry(f"800x{window_height}")
+        help_popup.title("Program Help Page")
+        help_text = tkinter.Text(help_popup, width = 100, height = len(CONSTANTS.HELP_STRING))
+        help_text.place(x = 0, y = 0)
+        self.modify_Text(help_text, CONSTANTS.HELP_STRING)
+        help_popup.mainloop()
