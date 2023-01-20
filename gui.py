@@ -121,6 +121,8 @@ class GUI:
 
         # analytics variables
         self.fx = None
+        self.baseline_fx = None
+        self.sampling_fx = None
         self.baseline_dirac = None
         self.sampling_dirac = None
 
@@ -160,26 +162,33 @@ class GUI:
         empty_canvas = FigureCanvasTkAgg(self.empty_fig, self.frame_plot)
         empty_canvas._tkcanvas.grid(row = 3, column = 0)
 
-    def plot_qc_approximations(self, xdata, ydata, hyperbolic_fit, parabolic_fit, bl, br):
+    def plot_qc_approximations(self, bxdata, bydata, sxdata, sydata, hyperbolic_fit_baseline, hyperbolic_fit_sampling, parabolic_fit_baseline, parabolic_fit_sampling, bl, br, sl, sr):
         self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
         hyperbolic_plot = self.fig.add_subplot(1, 3, 1)
-        hyperbolic_plot.plot(xdata, ydata, label="Data")
-        hyperbolic_plot.plot(xdata, helpers.hyp_model(hyperbolic_fit, xdata), label="Hyperbolic fit")
+        hyperbolic_plot.plot(bxdata, bydata, label="Baseline Data")
+        hyperbolic_plot.plot(sxdata, sydata, label="Sampling Data")
+        hyperbolic_plot.plot(bxdata, helpers.hyp_model(hyperbolic_fit_baseline, bxdata), label="Hyperbolic fit baseline")
+        hyperbolic_plot.plot(sxdata, helpers.hyp_model(hyperbolic_fit_sampling, sxdata), label="Hyperbolic fit sampling")
         hyperbolic_plot.legend()
         hyperbolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
         hyperbolic_plot.set_ylabel("Current (scaled w.r.t max A)")
         #hyperbolic_plot.title("Hyperbolic data and model") # TODO find a way to add titles to the plots
         parabolic_plot = self.fig.add_subplot(1, 3, 2)
-        parabolic_plot.plot(xdata, ydata, label="Data")
-        parabolic_plot.plot(xdata, helpers.par_model(parabolic_fit, xdata), label="Parabolic fit")
+        parabolic_plot.plot(bxdata, bydata, label="Baseline Data")
+        parabolic_plot.plot(sxdata, sydata, label="Sampling Data")
+        parabolic_plot.plot(bxdata, helpers.par_model(parabolic_fit_baseline, bxdata), label="Parabolic fit baseline")
+        parabolic_plot.plot(sxdata, helpers.par_model(parabolic_fit_sampling, sxdata), label="Parabolic fit sampling")
         parabolic_plot.legend()
         parabolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
         parabolic_plot.set_ylabel("Current (scaled w.r.t max A)")
         #parabolic_plot.title("Parabolic fit")
         linear_plot = self.fig.add_subplot(1, 3, 3)
-        linear_plot.plot(xdata, ydata, label="Data")
-        linear_plot.plot(xdata, helpers.lin_model(bl, xdata), label="Left linear fit")
-        linear_plot.plot(xdata, helpers.lin_model(br, xdata), label="Right linear fit")
+        linear_plot.plot(bxdata, bydata, label="Baseline Data")
+        linear_plot.plot(sxdata, sydata, label="Sampling Data")
+        linear_plot.plot(bxdata, helpers.lin_model(bl, bxdata), label="Left linear fit baseline")
+        linear_plot.plot(bxdata, helpers.lin_model(br, bxdata), label="Right linear fit baseline")
+        linear_plot.plot(sxdata, helpers.lin_model(sl, sxdata), label="Left linear fit sampling")
+        linear_plot.plot(sxdata, helpers.lin_model(sr, sxdata), label="Right linear fit sampling")
         linear_plot.legend()
         linear_plot.set_xlabel("Voltage (scaled w.r.t max V)")
         linear_plot.set_ylabel("Current (scaled w.r.t max A)")
@@ -391,82 +400,105 @@ class GUI:
         self.window_root.destroy()
 
     def qc_action(self):
-        if self.fx is None:
-            self.feedback_str.set("No forward sweep array in memory. Please run a baseline or sample.")
+        if self.baseline_fx is None or self.sampling_fx is None:
+            self.feedback_str.set("Both forward sweep arrays not present. Please run a baseline and a sample.")
             return
         self.feedback_str.set("Running rudimentary quality control testing; generating fits")
         sweep_num = 1 # run QC test on the second sweep
-        x = [obj[0] for obj in self.fx[sweep_num]] # voltages
-        y = [obj[1] for obj in self.fx[sweep_num]] # ids
-        xn = [item / max(x) for item in x] # normalized x
-        yn = [item / max(y) for item in y] # normalized y
+        bx = [obj[0] for obj in self.baseline_fx[sweep_num]] # voltages
+        by = [obj[1] for obj in self.baseline_fx[sweep_num]] # ids
+        bxn = [item / max(bx) for item in bx] # normalized x
+        byn = [item / max(by) for item in by] # normalized y
+        sx = [obj[0] for obj in self.sampling_fx[sweep_num]]
+        sy = [obj[1] for obj in self.sampling_fx[sweep_num]]
+        sxn = [item / max(sx) for item in sx]
+        syn = [item / max(sy) for item in sy]
 
         # check curve data
         check_curve_data = []
-        if len(xn) != len(yn):
-            check_curve_data += [f"Data lists do not have same number of elements: len(xn) is {len(xn)}; len(yn) is {len(yn)}."]
-        if not all([all([type(item) is float for item in xn]), all([type(item) is float for item in yn])]):
+        if len(bxn) != len(byn):
+            check_curve_data += [f"Baseline data lists do not have same number of elements: len(bxn) is {len(bxn)}; len(byn) is {len(byn)}."]
+        if len(sxn) != len(syn):
+            check_curve_data += [f"Sampling data lists do not have same number of elements: len(sxn) is {len(sxn)}; len(syn) is {len(syn)}."]
+        if not all([type(item) is float for item in bxn + byn + sxn + syn]):
             check_curve_data += [f"Data lists must be entirely numeric."]
         if len(check_curve_data) > 0:
             print("Curve data is not proper.\n" + "\n".join(check_curve_data))
             return
 
-        # Parabolic fit
-        helpers.print_debug("Generating parabolic fit")
+        # Parabolic fits
+        helpers.print_debug("Generating parabolic fits")
         B0p = [1, 1, 1] # initial search point for fminsearch
-        parabolic_fit = scipy.optimize.fmin(func = helpers.par_residuals, x0 = B0p, args = (xn, yn))
+        parabolic_fit_baseline = scipy.optimize.fmin(func = helpers.par_residuals, x0 = B0p, args = (bxn, byn))
+        parabolic_fit_sampling = scipy.optimize.fmin(func = helpers.par_residuals, x0 = B0p, args = (sxn, syn))
 
-        # Hyperbolic fit
-        # fit data to model
-        helpers.print_debug("Fitting data to model")
+        # Hyperbolic fits
+        helpers.print_debug("Generating hyperbolic fits")
         start_point = [0.890903252535798, 0.959291425205444, 0.547215529963803, 0.138624442828679]
-        hyperbolic_fit = scipy.optimize.least_squares(helpers.hyp_residuals, x0 = start_point, args = (xn, yn)) # does not return goodness of fit data
+        hyperbolic_fit_baseline = scipy.optimize.least_squares(helpers.hyp_residuals, x0 = start_point, args = (bxn, byn)) # does not return goodness of fit data
+        hyperbolic_fit_sampling = scipy.optimize.least_squares(helpers.hyp_residuals, x0 = start_point, args = (sxn, syn))
 
         # Moving average filter and noise tests calculate max difference and average
-        fil = matlab.movmean(yn, 3)
-        maxn = max([abs(fil[i]-yn[i]) for i in range(len(yn))])
-        avgn = np.mean([abs(fil[i]-yn[i]) for i in range(len(yn))])
+        fil = matlab.movmean(byn, 3)
+        bmaxn = max([abs(fil[i]-byn[i]) for i in range(len(byn))])
+        bavgn = np.mean([abs(fil[i]-byn[i]) for i in range(len(byn))])
+        fil = matlab.movmean(syn, 3)
+        smaxn = max([abs(fil[i]-syn[i]) for i in range(len(syn))])
+        savgn = np.mean([abs(fil[i]-syn[i]) for i in range(len(syn))])
 
         # Linear fit: split at minima and calculate slope on either side
-        val = min(yn)
-        xmin = min(max(yn.index(val), 2), len(yn) - 2)
-        minx = xn[xmin]
-        bl = np.polynomial.polynomial.polyfit(xn[:xmin], yn[:xmin], 1) # returns numpy.nd_array([c_1, c_2]) for y = c_1 * x + c_2
-        br = np.polynomial.polynomial.polyfit(xn[xmin:], yn[xmin:], 1)
-        helpers.print_debug(f"left linear fit: {bl}; right linear fit: {br}")
-        lsl = bl[1]
-        rsl = br[1]
-        # defining functions for linear fit
+        val = min(byn)
+        xmin = min(max(byn.index(val), 2), len(byn) - 2)
+        minx = bxn[xmin]
+        bl = np.polynomial.polynomial.polyfit(bxn[:xmin], byn[:xmin], 1) # returns numpy.nd_array([c_1, c_2]) for y = c_1 * x + c_2
+        br = np.polynomial.polynomial.polyfit(bxn[xmin:], byn[xmin:], 1)
+        val = min(syn)
+        xmin = min(max(syn.index(val), 2), len(syn) - 2)
+        minx = sxn[xmin]
+        sl = np.polynomial.polynomial.polyfit(sxn[:xmin], syn[:xmin], 1)
+        sr = np.polynomial.polynomial.polyfit(sxn[xmin:], syn[xmin:], 1)
 
-        score, message = helpers.score(hyperbolic_fit.x, parabolic_fit, {"maxn": maxn, "avgn": avgn}, {"lsl": lsl, "rsl": rsl})
-        self.qc_score_str = f"Score: {score}\n{message}"
+        score_baseline, message_baseline = helpers.score(hyperbolic_fit_baseline.x, parabolic_fit_baseline, {"maxn": bmaxn, "avgn": bavgn}, {"lsl": bl[1], "rsl": br[1]})
+        score_sampling, message_sampling = helpers.score(hyperbolic_fit_sampling.x, parabolic_fit_sampling, {"maxn": smaxn, "avgn": savgn}, {"lsl": sl[1], "rsl": sr[1]})
+        self.qc_score_str = f"Baseline score: {score_baseline}\n{message_baseline}\nSampling score: {score_sampling}\n{message_sampling}"
         self.modify_Text(self.qc_score_textbox, self.qc_score_str)
         helpers.print_debug(self.qc_score_str)
 
-        self.plot_qc_approximations(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
+        self.plot_qc_approximations(bxn, byn, sxn, syn, hyperbolic_fit_baseline.x, hyperbolic_fit_sampling.x, parabolic_fit_baseline, parabolic_fit_sampling, bl, br, sl, sr)
         #self.plot_to_window(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
 
         output_qc_parameters = {
             "data used": self.fx_filename,
             "hyperbolic fit": {
-                "params": {
-                    "a": hyperbolic_fit.x[0],
-                    "b": hyperbolic_fit.x[1],
-                    "c": hyperbolic_fit.x[2],
-                    "h": hyperbolic_fit.x[3]
+                "baseline params": {
+                    "a": hyperbolic_fit_baseline.x[0],
+                    "b": hyperbolic_fit_baseline.x[1],
+                    "c": hyperbolic_fit_baseline.x[2],
+                    "h": hyperbolic_fit_baseline.x[3]
+                },
+                "sampling params": {
+                    "a": hyperbolic_fit_sampling.x[0],
+                    "b": hyperbolic_fit_sampling.x[1],
+                    "c": hyperbolic_fit_sampling.x[2],
+                    "h": hyperbolic_fit_sampling.x[3]
                 },
                 "model": "(b**2 * ((x - h)**2 / (a**2) + 1))**0.5 + c"
             },
             "parabolic fit": {
-                "params": {
-                    "a": parabolic_fit[0],
-                    "b": parabolic_fit[1],
-                    "c": parabolic_fit[2]
+                "baseline params": {
+                    "a": parabolic_fit_baseline[0],
+                    "b": parabolic_fit_baseline[1],
+                    "c": parabolic_fit_baseline[2]
+                },
+                "sampling params": {
+                    "a": parabolic_fit_sampling[0],
+                    "b": parabolic_fit_sampling[1],
+                    "c": parabolic_fit_sampling[2]
                 },
                 "model": "(((x - a)**2/4) * c) + b"
             },
             "linear fit": {
-                "params": {
+                "baseline params": {
                     "left fit": {
                         "b": bl[0],
                         "m": bl[1]
@@ -476,17 +508,33 @@ class GUI:
                         "m": br[1]
                     }
                 },
+                "sampling params": {
+                    "left fit": {
+                        "b": sl[0],
+                        "m": sl[1]
+                    },
+                    "right fit": {
+                        "b": sr[0],
+                        "m": sr[1]
+                    }
+                },
                 "model": "m * x + b"
             },
-            "moving average filter fit": {
-                "params": {
-                    "moving mean maximum": maxn,
-                    "moving mean average": avgn
+            "moving average filter fits": {
+                "baseline params": {
+                    "moving mean maximum": bmaxn,
+                    "moving mean average": bavgn
+                },
+                "sampling params": {
+                    "moving mean maximum": smaxn,
+                    "moving mean average": savgn
                 }
             },
-            "score": {
-                "score": score,
-                "message": message
+            "scores": {
+                "baseline score": score_baseline,
+                "baseline message": message_baseline,
+                "sampling score": score_sampling,
+                "sampling message": message_sampling
             }
         }
         with open(f"qc_params_{helpers.get_time()}.json", "w") as f:
