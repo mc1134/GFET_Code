@@ -276,7 +276,6 @@ class GUI:
         def print_stuff(s):
             helpers.print_debug(s)
             self.feedback_str.set(s)
-        self.IP = self.IP_entry.get()
         if not helpers.validate_ip(self.IP):
             print_stuff(f'The IP address "{self.IP}" is not valid.')
             return
