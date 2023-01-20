@@ -303,7 +303,7 @@ class GUI:
             self.feedback_str.set("Cannot run baseline using empty file name.")
             return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
-        local_baseline_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
+        local_baseline_raw_data_file = f"{filename}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_baseline_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
         remote_baseline_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
@@ -342,7 +342,7 @@ class GUI:
             self.feedback_str.set("Cannot run sampling using empty file name.")
             return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
-        local_sampling_raw_data_file = f"data/{filename}_{mode}_RAW_DATA.csv"
+        local_sampling_raw_data_file = f"{filename}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_sampling_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
         remote_sampling_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
