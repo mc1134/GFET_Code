@@ -14,7 +14,7 @@ import json
 
 import matlab_helpers as matlab
 import helperfuncs as helpers
-from ssh_to_device import ssh_to_device
+import ssh_to_device
 import constants as CONSTANTS
 
 class GUI:
@@ -113,7 +113,7 @@ class GUI:
         self.initialize_plots()
 
         # ssh client
-        self.ssh_client = ssh_to_device()
+        self.ssh_client = ssh_to_device.ssh_to_device()
 
         # strings for firmware file locations
         self.local_firmware = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONSTANTS.LOCAL_FIRMWARE_FILE_NAME)
@@ -281,7 +281,7 @@ class GUI:
             print_stuff(f'The IP address "{IP}" is not valid.')
             return
         print_stuff(f"Connecting to device ({IP})...")
-        if not self.ssh_client.connect(self.IP, CONSTANTS.PORT):
+        if not self.ssh_client.connect(IP, CONSTANTS.PORT):
             print_stuff(f"Could not connect to {IP}.")
             return
         print_stuff(f"Connected to {IP}. Uploading firmware to device...")
