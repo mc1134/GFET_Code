@@ -28,6 +28,9 @@ class GUI:
         fx, bx: The forward and backward arrays of voltage vs Ids.
     """
     def __init__(self):
+        # ssh client
+        self.ssh_client = ssh_to_device.ssh_to_device()
+
         # initializing main window
         self.window_root = tkinter.Tk()
         self.window_root.title("QC and Data Analytics GUI")
@@ -43,7 +46,7 @@ class GUI:
         self.feedback_str = tkinter.StringVar()
         self.feedback_str.set("This is the temporary label for displaying button feedback information.")
         self.IP = tkinter.StringVar()
-        self.IP.set("10.0.0.0")
+        self.IP.set("Querying IP addresses...")
 
         # configuring text variables used by the Text widgets
         self.qc_score_str = "No Q/C Test run."
@@ -63,14 +66,22 @@ class GUI:
         self.frame_plot.grid(row = 2, column = 0)
 
         # connection controls
-        ttk.Label(self.frame_controls, text = "Enter IP Address").grid(row = 0, column = 0)
-        self.IP_entry = ttk.Entry(self.frame_controls, textvariable = self.IP)
-        self.IP_entry.grid(row = 0, column = 1)
-        ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 2)
-        ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 3)
+        # ttk.Label(self.frame_controls, text = "Enter IP Address").grid(row = 0, column = 0)
+        # self.IP_entry = ttk.Entry(self.frame_controls, textvariable = self.IP)
+        # self.IP_entry.grid(row = 0, column = 1)
+        ttk.Label(self.frame_controls, text = "Select IP Address...").grid(row = 0, column = 0)
+        self.IP_selection = ttk.Combobox(self.frame_controls, textvariable = self.IP, width = 24)
+        self.IP_selection.grid(row = 0, column = 1)
+        self.IP_selection.state(["readonly"])
+        def on_ip_update(event, *args):
+            helpers.print_debug(f"Selected IP address {self.IP.get()}")
+        self.IP_selection.bind("<<ComboboxSelected>>", on_ip_update)
+        ttk.Button(self.frame_controls, text = "Refresh IP address list", command = self.refresh_ip_action).grid(row = 0, column = 2)
+        ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 3)
+        ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 4)
         #ttk.Button(self.frame_controls, text = "Close", command = self.close_action).grid(row = 0, column = 4)
         # help!
-        ttk.Button(self.frame_controls, text = "Help", command = self.help_action).grid(row = 0, column = 4)
+        ttk.Button(self.frame_controls, text = "Help", command = self.help_action).grid(row = 0, column = 5)
 
         # file name entry
         ttk.Label(self.frame_controls, text = "Enter file name to be used in baseline/sampling data collection").grid(row = 1, column = 0)
@@ -112,9 +123,6 @@ class GUI:
         self.empty_fig = None
         self.initialize_plots()
 
-        # ssh client
-        self.ssh_client = ssh_to_device.ssh_to_device()
-
         # strings for firmware file locations
         self.local_firmware = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONSTANTS.LOCAL_FIRMWARE_FILE_NAME)
         self.remote_firmware = CONSTANTS.REMOTE_FIRMWARE_PATH
@@ -129,6 +137,10 @@ class GUI:
         # variables for maintaining state of additional tkinter widgets
         self.popup_entry = None
 
+        # search for IP addresses
+        self.update_ip_addresses()
+
+        # start the window
         self.window_root.mainloop()
 
     ##### Additional TK components and methods #####
@@ -154,6 +166,20 @@ class GUI:
         widget.delete("1.0", "end")
         widget.insert("1.0", text)
         widget.config(state = "disabled")
+
+    def update_ip_addresses(self):
+        helpers.print_debug("Updating IP address list...")
+        self.feedback_str.set("Updating IP address list. This will take a few minutes.")
+        self.IP_selection.set("Querying IP addresses...")
+        resp = self.ssh_client.search_ip_addresses()
+        #resp = [{"ip": "192.168.0.1"}, {"ip": "192.168.0.65"}]
+        if len(resp) == 0:
+            self.IP_selection.set("No IP addresses detected.")
+        else:
+            ip_addresses = [item["ip"] for item in resp]
+            self.IP_selection["values"] = ip_addresses
+            self.IP_selection.set(ip_addresses[0])
+        return resp
 
     ##### Plots #####
 
@@ -272,6 +298,11 @@ class GUI:
 
     ##### Button actions #####
 
+    def refresh_ip_action(self):
+        self.feedback_str.set("Refreshing IP addresses...")
+        resp = self.update_ip_addresses()
+        self.feedback_str.set(f"Found {len(resp)} IPs")
+
     def connect_action(self):
         def print_stuff(s):
             helpers.print_debug(s)
@@ -309,7 +340,6 @@ class GUI:
         remote_baseline_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
-            self.feedback_str.set(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(remote_baseline_raw_data_file, local_baseline_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
@@ -348,7 +378,6 @@ class GUI:
         remote_sampling_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
-            self.feedback_str.set(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
             downloaded = self.ssh_client.download_file(remote_sampling_raw_data_file, local_sampling_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
