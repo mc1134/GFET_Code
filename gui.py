@@ -47,7 +47,7 @@ class GUI:
 
         # configuring text variables used by the Text widgets
         self.qc_score_str = "No Q/C Test run."
-        self.abs_dirac_shift = ""
+        self.abs_dirac_shift = "No dirac shift run."
         self.baseline_filename = "No baseline file loaded."
         self.sampling_filename = "No sampling file loaded."
         self.fx_filename = None
