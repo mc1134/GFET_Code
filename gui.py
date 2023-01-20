@@ -276,14 +276,15 @@ class GUI:
         def print_stuff(s):
             helpers.print_debug(s)
             self.feedback_str.set(s)
-        if not helpers.validate_ip(self.IP):
-            print_stuff(f'The IP address "{self.IP}" is not valid.')
+        IP = self.IP.get()
+        if not helpers.validate_ip(IP):
+            print_stuff(f'The IP address "{IP}" is not valid.')
             return
-        print_stuff(f"Connecting to device ({self.IP})...")
+        print_stuff(f"Connecting to device ({IP})...")
         if not self.ssh_client.connect(self.IP, CONSTANTS.PORT):
-            print_stuff(f"Could not connect to {self.IP}.")
+            print_stuff(f"Could not connect to {IP}.")
             return
-        print_stuff(f"Connected to {self.IP}. Uploading firmware to device...")
+        print_stuff(f"Connected to {IP}. Uploading firmware to device...")
         if not self.ssh_client.upload_firmware(self.local_firmware, self.remote_firmware):
             print_stuff("Could not upload firmware.")
             return
