@@ -1,7 +1,5 @@
 import tkinter
 from tkinter import ttk, filedialog
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize
@@ -23,7 +21,6 @@ class GUI:
         window_root: Defines the root window. Top level container that contains everything else.
         frame_controls: Defines the frame for buttons. Placed at row 0.
         frame_prompt: Defines the frame for the prompt. Placed at row 1.
-        frame_plot: Defines the frame for the embedded matplotlib plots. Placed at row 2.
         feedback_str: Text variable that is updated when a button is pressed.
         fx, bx: The forward and backward arrays of voltage vs Ids.
     """
@@ -34,12 +31,11 @@ class GUI:
         # initializing main window
         self.window_root = tkinter.Tk()
         self.window_root.title("QC and Data Analytics GUI")
-        self.window_root.geometry("1500x280")
+        self.window_root.geometry("960x240")
 
         # configuring valid window grid positions
         self.window_root.grid_rowconfigure(0)
         self.window_root.grid_rowconfigure(1)
-        self.window_root.grid_rowconfigure(2)
         self.window_root.grid_columnconfigure(0)
 
         # configuring textvariables for GUI
@@ -59,28 +55,17 @@ class GUI:
         # defining frames
         self.frame_controls = tkinter.Frame(self.window_root, background = "Green") # frame for buttons etc.
         self.frame_prompt = tkinter.Frame(self.window_root, background = "Blue") # frame for displaying prompt
-        self.frame_plot = tkinter.Frame(self.window_root, background = "Red") # frame for the plot
 
         # defining frame positioning
         self.frame_controls.grid(row = 0, column = 0)
         self.frame_prompt.grid(row = 1, column = 0)
-        self.frame_plot.grid(row = 2, column = 0)
 
         # connection controls
         ttk.Label(self.frame_controls, text = "Enter IP Address").grid(row = 0, column = 0)
         self.IP_entry = ttk.Entry(self.frame_controls, textvariable = self.IP)
         self.IP_entry.grid(row = 0, column = 1)
-        # ttk.Label(self.frame_controls, text = "Select IP Address...").grid(row = 0, column = 0)
-        # self.IP_selection = ttk.Combobox(self.frame_controls, textvariable = self.IP, width = 24)
-        # self.IP_selection.grid(row = 0, column = 1)
-        # self.IP_selection.state(["readonly"])
-        # def on_ip_update(event, *args):
-        #     helpers.print_debug(f"Selected IP address {self.IP.get()}")
-        # self.IP_selection.bind("<<ComboboxSelected>>", on_ip_update)
-        # ttk.Button(self.frame_controls, text = "Refresh IP address list", command = self.refresh_ip_action).grid(row = 0, column = 2)
         ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 2)
         ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 3)
-        #ttk.Button(self.frame_controls, text = "Close", command = self.close_action).grid(row = 0, column = 4)
         # help!
         ttk.Button(self.frame_controls, text = "Help", command = self.help_action).grid(row = 0, column = 4)
 
@@ -115,14 +100,9 @@ class GUI:
         self.abs_dirac_shift_textbox.grid(row = 5, column = 2)
         self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
-        # text fields
+        # feedback string fields
         ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
         ttk.Label(self.frame_prompt, textvariable = self.feedback_str).grid(row = 1, column = 1)
-
-        # for embedding matplotlib plots into the GUI
-        self.fig = None
-        self.empty_fig = None
-        self.initialize_plots()
 
         # strings for firmware file locations
         self.local_firmware = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONSTANTS.LOCAL_FIRMWARE_FILE_NAME)
@@ -168,64 +148,7 @@ class GUI:
         widget.insert("1.0", text)
         widget.config(state = "disabled")
 
-    # def update_ip_addresses(self):
-    #     helpers.print_debug("Updating IP address list...")
-    #     self.feedback_str.set("Updating IP address list. This will take a few minutes.")
-    #     self.IP_selection.set("Querying IP addresses...")
-    #     #resp = self.ssh_client.search_ip_addresses()
-    #     resp = [{"ip": "192.168.0.1"}, {"ip": "192.168.0.65"}]
-    #     helpers.print_debug("HARD CODING EXAMPLE IPs")
-    #     if len(resp) == 0:
-    #         self.IP_selection.set("No IP addresses detected.")
-    #     else:
-    #         ip_addresses = [item["ip"] for item in resp]
-    #         self.IP_selection["values"] = ip_addresses
-    #         self.IP_selection.set(ip_addresses[0])
-    #     return resp
-
     ##### Plots #####
-
-    def initialize_plots(self): # this function's sole purpose is to set the window controls in the right place
-        self.empty_fig = Figure(figsize = (15, 5), layout = "tight")
-        empty_canvas = FigureCanvasTkAgg(self.empty_fig, self.frame_plot)
-        empty_canvas._tkcanvas.grid(row = 3, column = 0)
-
-    def plot_qc_approximations_old(self, bxdata, bydata, sxdata, sydata, hyperbolic_fit_baseline, hyperbolic_fit_sampling, parabolic_fit_baseline, parabolic_fit_sampling, bl, br, sl, sr):
-        # this method is deprecated in favor of popup matplotlib plots
-        self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
-        hyperbolic_plot = self.fig.add_subplot(1, 3, 1)
-        hyperbolic_plot.plot(bxdata, bydata, label="Baseline Data")
-        # hyperbolic_plot.plot(sxdata, sydata, label="Sampling Data")
-        hyperbolic_plot.plot(bxdata, helpers.hyp_model(hyperbolic_fit_baseline, bxdata), label="Hyperbolic fit baseline")
-        # hyperbolic_plot.plot(sxdata, helpers.hyp_model(hyperbolic_fit_sampling, sxdata), label="Hyperbolic fit sampling")
-        hyperbolic_plot.legend()
-        hyperbolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
-        hyperbolic_plot.set_ylabel("Current (scaled w.r.t max A)")
-        hyperbolic_plot.set_title("Hyperbolic quality control plot (baseline)")
-        parabolic_plot = self.fig.add_subplot(1, 3, 2)
-        parabolic_plot.plot(bxdata, bydata, label="Baseline Data")
-        # parabolic_plot.plot(sxdata, sydata, label="Sampling Data")
-        parabolic_plot.plot(bxdata, helpers.par_model(parabolic_fit_baseline, bxdata), label="Parabolic fit baseline")
-        # parabolic_plot.plot(sxdata, helpers.par_model(parabolic_fit_sampling, sxdata), label="Parabolic fit sampling")
-        parabolic_plot.legend()
-        parabolic_plot.set_xlabel("Voltage (scaled w.r.t max V)")
-        parabolic_plot.set_ylabel("Current (scaled w.r.t max A)")
-        parabolic_plot.set_title("Parabolic quality control plot (baseline)")
-        linear_plot = self.fig.add_subplot(1, 3, 3)
-        linear_plot.plot(bxdata, bydata, label="Baseline Data")
-        # linear_plot.plot(sxdata, sydata, label="Sampling Data")
-        linear_plot.plot(bxdata, helpers.lin_model(bl, bxdata), label="Left linear fit baseline")
-        linear_plot.plot(bxdata, helpers.lin_model(br, bxdata), label="Right linear fit baseline")
-        # linear_plot.plot(sxdata, helpers.lin_model(sl, sxdata), label="Left linear fit sampling")
-        # linear_plot.plot(sxdata, helpers.lin_model(sr, sxdata), label="Right linear fit sampling")
-        linear_plot.legend()
-        linear_plot.set_xlabel("Voltage (scaled w.r.t max V)")
-        linear_plot.set_ylabel("Current (scaled w.r.t max A)")
-        linear_plot.set_title("Linear quality control plot (baseline)")
-        canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
-        canvas._tkcanvas.grid(row = 3, column = 0)
-        #self.plot_qc_approximations_sampling(sxdata, sydata, hyperbolic_fit_sampling, parabolic_fit_sampling, sl, sr, mode = "sampling")
-        self.feedback_str.set("Plotted the hyperbolic fit, parabolic fit, and linear fits with respect to the data.")
 
     def plot_qc_approximations(self, xdata, ydata, hyperbolic_fit, parabolic_fit, linear_left, linear_right, mode="baseline"):
         helpers.print_debug(f"Plotting {mode} hyperbolic data and model")
@@ -253,20 +176,6 @@ class GUI:
         ax[2].set_ylabel("Current (scaled w.r.t. max A)")
         ax[2].set_title(f"Linear quality control plot ({mode})")
         plt.show()
-
-    def plot_dirac_voltage_old(self, x_baseline, y_baseline, x_sampling, y_sampling):
-        # this method is deprecated in favor of popup matplotlib plots
-        helpers.print_debug("Plotting dirac voltage graph")
-        self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
-        result_plot = self.fig.add_subplot(1, 3, 2)
-        result_plot.plot(x_baseline, y_baseline, label="Baseline")
-        result_plot.plot(x_sampling, y_sampling, label="Sampling")
-        result_plot.legend()
-        result_plot.set_xlabel("Voltage (mV)")
-        result_plot.set_ylabel("Current (μA)")
-        #result_plot.title("Plot of second forward sweeps for baseline and sample data")
-        canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
-        canvas._tkcanvas.grid(row = 3, column = 0)
 
     def plot_dirac_voltage(self, x_baseline, y_baseline, x_sampling, y_sampling, delta):
         helpers.print_debug("Plotting dirac voltage graph")
@@ -311,11 +220,6 @@ class GUI:
         helpers.print_debug("Finished running splitz_new_opt")
 
     ##### Button actions #####
-
-    # def refresh_ip_action(self):
-    #     self.feedback_str.set("Refreshing IP addresses...")
-    #     resp = self.update_ip_addresses()
-    #     self.feedback_str.set(f"Found {len(resp)} IPs")
 
     def connect_action(self):
         def print_stuff(s):
@@ -443,11 +347,6 @@ class GUI:
         self.sampling_filename = local_sampling_raw_data_file
         self.modify_Text(self.sampling_file_textbox, self.sampling_filename)
         self.feedback_str.set(f"Successfully loaded sampling file {local_sampling_raw_data_file}")
-
-    def close_action(self): # currently unused. user can just click x button to close window
-        self.feedback_str.set("Closing window...")
-        self.window_root.quit()
-        self.window_root.destroy()
 
     def qc_action(self):
         if self.baseline_fx is None or self.sampling_fx is None:
