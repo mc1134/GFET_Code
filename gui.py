@@ -34,7 +34,7 @@ class GUI:
         # initializing main window
         self.window_root = tkinter.Tk()
         self.window_root.title("QC and Data Analytics GUI")
-        self.window_root.geometry("1500x720")
+        self.window_root.geometry("1500x280")
 
         # configuring valid window grid positions
         self.window_root.grid_rowconfigure(0)
@@ -190,7 +190,8 @@ class GUI:
         empty_canvas = FigureCanvasTkAgg(self.empty_fig, self.frame_plot)
         empty_canvas._tkcanvas.grid(row = 3, column = 0)
 
-    def plot_qc_approximations(self, bxdata, bydata, sxdata, sydata, hyperbolic_fit_baseline, hyperbolic_fit_sampling, parabolic_fit_baseline, parabolic_fit_sampling, bl, br, sl, sr):
+    def plot_qc_approximations_old(self, bxdata, bydata, sxdata, sydata, hyperbolic_fit_baseline, hyperbolic_fit_sampling, parabolic_fit_baseline, parabolic_fit_sampling, bl, br, sl, sr):
+        # this method is deprecated in favor of popup matplotlib plots
         self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
         hyperbolic_plot = self.fig.add_subplot(1, 3, 1)
         hyperbolic_plot.plot(bxdata, bydata, label="Baseline Data")
@@ -223,39 +224,39 @@ class GUI:
         linear_plot.set_title("Linear quality control plot (baseline)")
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
-        self.plot_qc_approximations_to_window(sxdata, sydata, hyperbolic_fit_sampling, parabolic_fit_sampling, sl, sr)
+        #self.plot_qc_approximations_sampling(sxdata, sydata, hyperbolic_fit_sampling, parabolic_fit_sampling, sl, sr, mode = "sampling")
         self.feedback_str.set("Plotted the hyperbolic fit, parabolic fit, and linear fits with respect to the data.")
 
-    def plot_qc_approximations_to_window(self, xdata, ydata, hyperbolic_fit, parabolic_fit, bl, br):
-        # this is used for the sampling data
-        helpers.print_debug("Plotting hyperbolic data and model")
+    def plot_qc_approximations(self, xdata, ydata, hyperbolic_fit, parabolic_fit, linear_left, linear_right, mode="baseline"):
+        helpers.print_debug(f"Plotting {mode} hyperbolic data and model")
         fig, ax = plt.subplots(1, 3)
         fig.set_size_inches(16, 5)
-        ax[0].plot(xdata, ydata, label="Sampling Data")
-        ax[0].plot(xdata, helpers.hyp_model(hyperbolic_fit, xdata), label="Hyperbolic fit sampling")
+        ax[0].plot(xdata, ydata, label=f"Data {mode}")
+        ax[0].plot(xdata, helpers.hyp_model(hyperbolic_fit, xdata), label=f"Hyperbolic fit {mode}")
         ax[0].legend()
         ax[0].set_xlabel("Voltage (scaled w.r.t. max V)")
         ax[0].set_ylabel("Current (scaled w.r.t. max A)")
-        ax[0].set_title("Hyperbolic quality control plot (sampling)")
-        helpers.print_debug("Plotting parabolic data and model")
-        ax[1].plot(xdata, ydata, label="Sampling Data")
-        ax[1].plot(xdata, helpers.par_model(parabolic_fit, xdata), label="Parabolic fit sampling")
+        ax[0].set_title(f"Hyperbolic quality control plot ({mode})")
+        helpers.print_debug(f"Plotting {mode} parabolic data and model")
+        ax[1].plot(xdata, ydata, label=f"Data {mode}")
+        ax[1].plot(xdata, helpers.par_model(parabolic_fit, xdata), label=f"Parabolic fit {mode}")
         ax[1].legend()
         ax[1].set_xlabel("Voltage (scaled w.r.t. max V)")
         ax[1].set_ylabel("Current (scaled w.r.t. max A)")
-        ax[1].set_title("Parabolic quality control plot (sampling)")
-        helpers.print_debug("Plotting linear data and model")
-        ax[2].plot(xdata, ydata, label="Sampling Data")
-        ax[2].plot(xdata, helpers.lin_model(bl, xdata), label="Left linear fit sampling")
-        ax[2].plot(xdata, helpers.lin_model(br, xdata), label="Right linear fit sampling")
+        ax[1].set_title(f"Parabolic quality control plot ({mode})")
+        helpers.print_debug(f"Plotting {mode} linear data and model")
+        ax[2].plot(xdata, ydata, label=f"Data {mode}")
+        ax[2].plot(xdata, helpers.lin_model(linear_left, xdata), label=f"Left linear fit {mode}")
+        ax[2].plot(xdata, helpers.lin_model(linear_right, xdata), label=f"Right linear fit {mode}")
         ax[2].legend()
         ax[2].set_xlabel("Voltage (scaled w.r.t. max V)")
         ax[2].set_ylabel("Current (scaled w.r.t. max A)")
-        ax[2].set_title("Linear quality control plot (sampling)")
+        ax[2].set_title(f"Linear quality control plot ({mode})")
         plt.show()
 
-    def plot_dirac_voltage(self, x_baseline, y_baseline, x_sampling, y_sampling):
-        helpers.print_debug("Plotting result graph")
+    def plot_dirac_voltage_old(self, x_baseline, y_baseline, x_sampling, y_sampling):
+        # this method is deprecated in favor of popup matplotlib plots
+        helpers.print_debug("Plotting dirac voltage graph")
         self.fig = Figure(figsize = (15, 5), dpi = 100, layout = "tight")
         result_plot = self.fig.add_subplot(1, 3, 2)
         result_plot.plot(x_baseline, y_baseline, label="Baseline")
@@ -266,6 +267,17 @@ class GUI:
         #result_plot.title("Plot of second forward sweeps for baseline and sample data")
         canvas = FigureCanvasTkAgg(self.fig, self.frame_plot)
         canvas._tkcanvas.grid(row = 3, column = 0)
+
+    def plot_dirac_voltage(self, x_baseline, y_baseline, x_sampling, y_sampling, delta):
+        helpers.print_debug("Plotting dirac voltage graph")
+        fig, ax = plt.subplots(1, 1)
+        ax.plot(x_baseline, y_baseline, label = "Baseline")
+        ax.plot(x_sampling, y_sampling, label = "Sampling")
+        ax.legend()
+        ax.set_xlabel("Voltage (mV)")
+        ax.set_ylabel("Current (μA)")
+        ax.set_title(f"Dirac voltage comparison graph (|Δ|={delta})")
+        plt.show()
 
     ##### File operations #####
 
@@ -502,8 +514,8 @@ class GUI:
         self.modify_Text(self.qc_score_textbox, self.qc_score_str)
         helpers.print_debug(self.qc_score_str)
 
-        self.plot_qc_approximations(bxn, byn, sxn, syn, hyperbolic_fit_baseline.x, hyperbolic_fit_sampling.x, parabolic_fit_baseline, parabolic_fit_sampling, bl, br, sl, sr)
-        #self.plot_qc_approximations_to_window(xn, yn, hyperbolic_fit.x, parabolic_fit, bl, br)
+        self.plot_qc_approximations(bxn, byn, hyperbolic_fit_baseline.x, parabolic_fit_baseline, bl, br, mode = "baseline")
+        self.plot_qc_approximations(sxn, syn, hyperbolic_fit_sampling.x, parabolic_fit_sampling, sl, sr, mode = "sampling")
 
         output_qc_parameters = {
             "data used": self.fx_filename,
@@ -592,7 +604,7 @@ class GUI:
         y_baseline = [obj[1] * 1000000 for obj in self.baseline_fx[sweep_num]] # amps converted to microamps
         x_sampling = [obj[0] * 1000    for obj in self.sampling_fx[sweep_num]] # millivolts!
         y_sampling = [obj[1] * 1000000 for obj in self.sampling_fx[sweep_num]] # microamps!
-        self.plot_dirac_voltage(x_baseline, y_baseline, x_sampling, y_sampling)
+        self.plot_dirac_voltage(x_baseline, y_baseline, x_sampling, y_sampling, dirac_shift)
         self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
 
         output_dirac_shift = {
