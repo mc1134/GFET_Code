@@ -48,6 +48,7 @@ class GUI:
         # configuring text variables used by the Text widgets
         self.qc_score_str = "No Q/C Test run."
         self.abs_dirac_shift = "No dirac shift run."
+        self.download_dir = CONSTANTS.DOWNLOAD_STR
         self.baseline_filename = "No baseline file loaded."
         self.sampling_filename = "No sampling file loaded."
         self.fx_filename = None
@@ -70,9 +71,13 @@ class GUI:
         ttk.Button(self.frame_controls, text = "Help", command = self.help_action).grid(row = 0, column = 4)
 
         # file name entry
-        ttk.Label(self.frame_controls, text = "Enter file name to be used in baseline/sampling data collection").grid(row = 1, column = 0)
+        ttk.Label(self.frame_controls, text = "File name for data collection").grid(row = 1, column = 0)
         self.filename_entry = ttk.Entry(self.frame_controls, text = helpers.get_time())
         self.filename_entry.grid(row = 1, column = 1)
+        ttk.Button(self.frame_controls, text = "Select directory to save file", command = self.choose_download_dir).grid(row = 1, column = 2)
+        self.download_dir_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
+        self.download_dir_textbox.grid(row = 1, column = 3)
+        self.modify_Text(self.download_dir_textbox, self.download_dir)
 
         # baseline controls
         ttk.Button(self.frame_controls, text = "Baseline", command = self.baseline_action).grid(row = 2, column = 0)
@@ -195,6 +200,11 @@ class GUI:
         helpers.print_debug(f"Selected file: {filename}")
         return filename
 
+    def select_directory(self):
+        directory = filedialog.askdirectory()
+        helpers.print_debug(f"Selected directory: {directory}")
+        return directory
+
     def read_raw_data(self, file):
         helpers.print_debug(f"Opening file {file}")
         self.fx_filename = file
@@ -243,16 +253,25 @@ class GUI:
         self.ssh_client.disconnect()
         self.feedback_str.set("Disconnected from SSH device.")
 
+    def choose_download_dir(self):
+        self.feedback_str.set("Selecting directory...")
+        self.download_dir = self.select_directory()
+        self.modify_Text(self.download_dir_textbox, self.download_dir)
+        self.feedback_str.set(f"Selected {self.download_dir}")
+
     def baseline_action(self):
         if not self.ssh_client.connected:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
+            return
+        if self.download_dir == CONSTANTS.DOWNLOAD_STR:
+            self.feedback_str.set("No download directory selected. Please select one prior to running a baseline.")
             return
         filename, mode = self.filename_entry.get(), "BASELINE"
         if filename == "":
             self.feedback_str.set("Cannot run baseline using empty file name.")
             return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
-        local_baseline_raw_data_file = f"{filename}_{mode}_RAW_DATA.csv"
+        local_baseline_raw_data_file = f"{self.download_dir}/{filename}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_baseline_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
         remote_baseline_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
@@ -285,12 +304,15 @@ class GUI:
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first")
             return
+        if self.download_dir == CONSTANTS.DOWNLOAD_STR:
+            self.feedback_str.set("No download directory selected. Please select one prior to running a sample.")
+            return
         filename, mode = self.filename_entry.get(), "SAMPLING"
         if filename == "":
             self.feedback_str.set("Cannot run sampling using empty file name.")
             return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
-        local_sampling_raw_data_file = f"{filename}_{mode}_RAW_DATA.csv"
+        local_sampling_raw_data_file = f"{self.download_dir}/{filename}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_sampling_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
         remote_sampling_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
