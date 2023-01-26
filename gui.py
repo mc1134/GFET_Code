@@ -17,12 +17,7 @@ import constants as CONSTANTS
 
 class GUI:
     """
-    Class that defines a GUI. Attributes:
-        window_root: Defines the root window. Top level container that contains everything else.
-        frame_controls: Defines the frame for buttons. Placed at row 0.
-        frame_prompt: Defines the frame for the prompt. Placed at row 1.
-        feedback_str: Text variable that is updated when a button is pressed.
-        fx, bx: The forward and backward arrays of voltage vs Ids.
+    Class that defines a GUI.
     """
     def __init__(self):
         # ssh client
@@ -31,11 +26,13 @@ class GUI:
         # initializing main window
         self.window_root = tkinter.Tk()
         self.window_root.title("QC and Data Analytics GUI")
-        self.window_root.geometry("960x240")
+        self.window_root.geometry("720x420")
 
         # configuring valid window grid positions
         self.window_root.grid_rowconfigure(0)
         self.window_root.grid_rowconfigure(1)
+        self.window_root.grid_rowconfigure(2)
+        self.window_root.grid_rowconfigure(3)
         self.window_root.grid_columnconfigure(0)
 
         # configuring textvariables for GUI
@@ -54,60 +51,68 @@ class GUI:
         self.fx_filename = None
 
         # defining frames
-        self.frame_controls = tkinter.Frame(self.window_root, background = "Green") # frame for buttons etc.
-        self.frame_prompt = tkinter.Frame(self.window_root, background = "Blue") # frame for displaying prompt
+        self.frame_connection = tkinter.Frame(self.window_root, background = "Yellow") # frame for connection controls
+        self.frame_data = tkinter.Frame(self.window_root, background = "Green") # frame for data collection
+        self.frame_analytics = tkinter.Frame(self.window_root, background = "Blue") # frame for analytics
+        self.frame_feedback = tkinter.Frame(self.window_root, background = "Black") # frame for displaying feedback
+        self.frame_connect_buttons = tkinter.Frame(self.frame_connection) # frame for connect buttons
 
         # defining frame positioning
-        self.frame_controls.grid(row = 0, column = 0)
-        self.frame_prompt.grid(row = 1, column = 0)
+        self.frame_connection.grid(row = 0, column = 0, sticky = "nw", padx = 10, pady = 10)
+        self.frame_data.grid(row = 1, column = 0, sticky = "nw", padx = 10, pady = 10)
+        self.frame_analytics.grid(row = 2, column = 0, sticky = "nw", padx = 10, pady = 10)
+        self.frame_feedback.grid(row = 3, column = 0, sticky = "nw", padx = 10, pady = 10)
+
+        # help!
+        ttk.Button(self.frame_connection, text = "Help", command = self.help_action, width = 20).grid(row = 0, column = 0, sticky = "w", padx = 4, pady = 4)
 
         # connection controls
-        ttk.Label(self.frame_controls, text = "Enter IP Address").grid(row = 0, column = 0)
-        self.IP_entry = ttk.Entry(self.frame_controls, textvariable = self.IP)
-        self.IP_entry.grid(row = 0, column = 1)
-        ttk.Button(self.frame_controls, text = "Connect", command = self.connect_action).grid(row = 0, column = 2)
-        ttk.Button(self.frame_controls, text = "Disconnect", command = self.disconnect_action).grid(row = 0, column = 3)
-        # help!
-        ttk.Button(self.frame_controls, text = "Help", command = self.help_action).grid(row = 0, column = 4)
+        ttk.Label(self.frame_connection, text = "Enter IP Address", width = 20).grid(row = 1, column = 0, sticky = "w", padx = 4, pady = 4)
+        self.IP_entry = ttk.Entry(self.frame_connection, textvariable = self.IP)
+        self.IP_entry.grid(row = 1, column = 1)
+        self.frame_connect_buttons.grid(row = 1, column = 2, sticky = "w", padx = 4, pady = 4)
+        ttk.Button(self.frame_connect_buttons, text = "Connect", command = self.connect_action, width = 20).grid(row = 0, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Button(self.frame_connect_buttons, text = "Disconnect", command = self.disconnect_action, width = 20).grid(row = 0, column = 1, sticky = "w", padx = 4, pady = 4)
 
         # file name entry
-        ttk.Label(self.frame_controls, text = "File name for data collection").grid(row = 1, column = 0)
-        self.filename_entry = ttk.Entry(self.frame_controls, text = helpers.get_time())
-        self.filename_entry.grid(row = 1, column = 1)
-        ttk.Button(self.frame_controls, text = "Select directory to save file", command = self.choose_download_dir).grid(row = 1, column = 2)
-        self.download_dir_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
-        self.download_dir_textbox.grid(row = 1, column = 3)
+        ttk.Label(self.frame_connection, text = "File name", width = 20).grid(row = 2, column = 0, sticky = "w", padx = 4, pady = 4)
+        self.filename_entry = ttk.Entry(self.frame_connection, text = helpers.get_time())
+        self.filename_entry.grid(row = 2, column = 1)
+        ttk.Label(self.frame_connection, text = "File directory", width = 20).grid(row = 3, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Button(self.frame_connection, text = "Select file directory", command = self.choose_download_dir, width = 20).grid(row = 3, column = 1, sticky = "w", padx = 4, pady = 4)
+        self.download_dir_textbox = tkinter.Text(self.frame_connection, width = 40, height = 1)
+        self.download_dir_textbox.grid(row = 3, column = 2, sticky = "w", padx = 4, pady = 4)
         self.modify_Text(self.download_dir_textbox, self.download_dir)
 
         # baseline controls
-        ttk.Button(self.frame_controls, text = "Baseline", command = self.baseline_action).grid(row = 2, column = 0)
-        ttk.Button(self.frame_controls, text = "Baseline from file", command = self.baseline_from_file_action).grid(row = 2, column = 1)
-        self.baseline_file_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
-        self.baseline_file_textbox.grid(row = 2, column = 2)
+        ttk.Button(self.frame_data, text = "Baseline", command = self.baseline_action, width = 20).grid(row = 0, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Button(self.frame_data, text = "Baseline from file", command = self.baseline_from_file_action, width = 20).grid(row = 0, column = 1, sticky = "w", padx = 4, pady = 4)
+        self.baseline_file_textbox = tkinter.Text(self.frame_data, width = 40, height = 1)
+        self.baseline_file_textbox.grid(row = 0, column = 2, sticky = "w", padx = 4, pady = 4)
         self.modify_Text(self.baseline_file_textbox, self.baseline_filename)
 
         # sample controls
-        ttk.Button(self.frame_controls, text = "Sample", command = self.sample_action).grid(row = 3, column = 0)
-        ttk.Button(self.frame_controls, text = "Sample from file", command = self.sample_from_file_action).grid(row = 3, column = 1)
-        self.sampling_file_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
-        self.sampling_file_textbox.grid(row = 3, column = 2)
+        ttk.Button(self.frame_data, text = "Sample", command = self.sample_action, width = 20).grid(row = 1, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Button(self.frame_data, text = "Sample from file", command = self.sample_from_file_action, width = 20).grid(row = 1, column = 1, sticky = "w", padx = 4, pady = 4)
+        self.sampling_file_textbox = tkinter.Text(self.frame_data, width = 40, height = 1)
+        self.sampling_file_textbox.grid(row = 1, column = 2, sticky = "w", padx = 4, pady = 4)
         self.modify_Text(self.sampling_file_textbox, self.sampling_filename)
 
         # analytics controls
-        ttk.Button(self.frame_controls, text = "Q/C Test", command = self.qc_action).grid(row = 4, column = 0)
-        ttk.Label(self.frame_controls, text = "Q/C Results: ").grid(row = 4, column = 1)
-        self.qc_score_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
-        self.qc_score_textbox.grid(row = 4, column = 2)
+        ttk.Button(self.frame_analytics, text = "Q/C Test", command = self.qc_action, width = 20).grid(row = 0, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Label(self.frame_analytics, text = "Q/C Results: ", width = 20).grid(row = 0, column = 1, sticky = "w", padx = 4, pady = 4)
+        self.qc_score_textbox = tkinter.Text(self.frame_analytics, width = 40, height = 1)
+        self.qc_score_textbox.grid(row = 0, column = 2, sticky = "w", padx = 4, pady = 4)
         self.modify_Text(self.qc_score_textbox, self.qc_score_str)
-        ttk.Button(self.frame_controls, text = "Calculate Dirac Shift", command = self.calculate_dirac_action).grid(row = 5, column = 0)
-        ttk.Label(self.frame_controls, text = "Absolute Dirac Shift: ").grid(row = 5, column = 1)
-        self.abs_dirac_shift_textbox = tkinter.Text(self.frame_controls, width = 40, height = 1)
-        self.abs_dirac_shift_textbox.grid(row = 5, column = 2)
+        ttk.Button(self.frame_analytics, text = "Calculate Dirac Shift", command = self.calculate_dirac_action, width = 20).grid(row = 1, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Label(self.frame_analytics, text = "Absolute Dirac Shift: ", width = 20).grid(row = 1, column = 1, sticky = "w", padx = 4, pady = 4)
+        self.abs_dirac_shift_textbox = tkinter.Text(self.frame_analytics, width = 40, height = 1)
+        self.abs_dirac_shift_textbox.grid(row = 1, column = 2, sticky = "w", padx = 4, pady = 4)
         self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
         # feedback string fields
-        ttk.Label(self.frame_prompt, text = "Feedback String:").grid(row = 1, column = 0)
-        ttk.Label(self.frame_prompt, textvariable = self.feedback_str).grid(row = 1, column = 1)
+        ttk.Label(self.frame_feedback, text = "Feedback String:", width = 20).grid(row = 1, column = 0, sticky = "w", padx = 4, pady = 4)
+        ttk.Label(self.frame_feedback, textvariable = self.feedback_str).grid(row = 1, column = 1, sticky = "w", padx = 4, pady = 4)
 
         # strings for firmware file locations
         self.local_firmware = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONSTANTS.LOCAL_FIRMWARE_FILE_NAME)
@@ -203,6 +208,8 @@ class GUI:
     def select_directory(self):
         directory = filedialog.askdirectory()
         helpers.print_debug(f"Selected directory: {directory}")
+        if directory == "":
+            directory = CONSTANTS.DOWNLOAD_STR
         return directory
 
     def read_raw_data(self, file):
@@ -281,15 +288,18 @@ class GUI:
             downloaded = self.ssh_client.download_file(remote_baseline_raw_data_file, local_baseline_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
         if not downloaded:
-            self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Baseline data file was not downloaded.")
-            return
+            helpers.print_debug(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Baseline data file was not downloaded.")
         else:
-            helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds. Removing from device...")
-            if not self.ssh_client.delete_file(remote_baseline_raw_data_file):
-                helpers.print_debug(f"Warning: file {remote_baseline_raw_data_file} was not removed from device.")
+            helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds.")
+        helpers.print_debug("Removing from device...")
+        if not self.ssh_client.delete_file(remote_baseline_raw_data_file):
+            helpers.print_debug(f"Warning: file {remote_baseline_raw_data_file} was not removed from device.")
         helpers.print_debug(f"Ending process from device...")
         if not self.ssh_client.kill_script():
             helpers.print_debug("Warning: process not ended.")
+        if not downloaded:
+            self.feedback_str.set("Baseline file not downloaded. Stopping")
+            return
         self.read_raw_data(local_baseline_raw_data_file)
         self.baseline_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
@@ -322,15 +332,18 @@ class GUI:
             downloaded = self.ssh_client.download_file(remote_sampling_raw_data_file, local_sampling_raw_data_file)
             time_elapsed += CONSTANTS.DOWNLOAD_DELAY
         if not downloaded:
-            self.feedback_str.set(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Sampling data file was not downloaded.")
-            return
+            helpers.print_debug(f"Maximum wait time {CONSTANTS.MAX_DOWNLOAD_WAIT_TIME} reached. Sampling data file was not downloaded.")
         else:
-            helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds. Removing from device...")
-            if not self.ssh_client.delete_file(remote_sampling_raw_data_file):
-                helpers.print_debug(f"Warning: file {remote_sampling_raw_data_file} was not removed from device.")
+            helpers.print_debug(f"Downloaded file in {time.time() - start_time} seconds.")
+        helpers.print_debug("Removing from device...")
+        if not self.ssh_client.delete_file(remote_sampling_raw_data_file):
+            helpers.print_debug(f"Warning: file {remote_sampling_raw_data_file} was not removed from device.")
         helpers.print_debug("Ending process from device...")
         if not self.ssh_client.kill_script():
             helpers.print_debug("Warning: process not ended.")
+        if not downloaded:
+            self.feedback_str.set("Sampling file not downloaded. Stopping")
+            return
         self.read_raw_data(local_sampling_raw_data_file)
         self.sampling_fx = self.fx
         mina, mins, jmin = helpers.sweepmean(self.fx)
