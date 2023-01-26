@@ -264,7 +264,10 @@ class GUI:
         self.feedback_str.set("Selecting directory...")
         self.download_dir = self.select_directory()
         self.modify_Text(self.download_dir_textbox, self.download_dir)
-        self.feedback_str.set(f"Selected {self.download_dir}")
+        if self.download_dir == CONSTANTS.DOWNLOAD_STR:
+            self.feedback_str.set(self.download_dir)
+        else:
+            self.feedback_str.set(f"Selected {self.download_dir}")
 
     def baseline_action(self):
         if not self.ssh_client.connected:
@@ -387,7 +390,7 @@ class GUI:
         if self.baseline_fx is None or self.sampling_fx is None:
             self.feedback_str.set("Both forward sweep arrays not present. Please run a baseline and a sample.")
             return
-        self.feedback_str.set("Running rudimentary quality control testing; generating fits")
+        self.feedback_str.set("Running quality control testing; generating fits")
         sweep_num = 1 # run QC test on the second sweep
         bx = [obj[0] for obj in self.baseline_fx[sweep_num]] # voltages
         by = [obj[1] for obj in self.baseline_fx[sweep_num]] # ids
@@ -448,7 +451,9 @@ class GUI:
         self.modify_Text(self.qc_score_textbox, self.qc_score_str)
         helpers.print_debug(self.qc_score_str)
 
+        self.feedback_str.set("Plotting baseline curves to new window...")
         self.plot_qc_approximations(bxn, byn, hyperbolic_fit_baseline.x, parabolic_fit_baseline, bl, br, mode = "baseline")
+        self.feedback_str.set("Plotting sampling curves to new window...")
         self.plot_qc_approximations(sxn, syn, hyperbolic_fit_sampling.x, parabolic_fit_sampling, sl, sr, mode = "sampling")
 
         output_qc_parameters = {
@@ -521,8 +526,10 @@ class GUI:
                 "sampling message": message_sampling
             }
         }
-        with open(f"qc_params_{helpers.get_time()}.json", "w") as f:
+        output_qc_file = f"qc_params_{helpers.get_time()}.json"
+        with open(output_qc_file, "w") as f:
             f.write(json.dumps(output_qc_parameters, indent = 4))
+        self.feedback_str.set(f"Wrote results to {output_qc_file}")
 
     def calculate_dirac_action(self):
         if self.baseline_dirac is None:
@@ -538,8 +545,8 @@ class GUI:
         y_baseline = [obj[1] * 1000000 for obj in self.baseline_fx[sweep_num]] # amps converted to microamps
         x_sampling = [obj[0] * 1000    for obj in self.sampling_fx[sweep_num]] # millivolts!
         y_sampling = [obj[1] * 1000000 for obj in self.sampling_fx[sweep_num]] # microamps!
+        self.feedback_str.set("Plotting absolute dirac voltage shift to new window")
         self.plot_dirac_voltage(x_baseline, y_baseline, x_sampling, y_sampling, dirac_shift)
-        self.feedback_str.set(f"Absolute dirac shift: {dirac_shift}")
 
         output_dirac_shift = {
             "data used": {
@@ -552,8 +559,10 @@ class GUI:
         self.abs_dirac_shift = dirac_shift
         self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
-        with open(f"dirac_shift_{helpers.get_time()}.json", "w") as f:
+        output_dirac_file = f"dirac_shift_{helpers.get_time()}.json"
+        with open(output_dirac_file, "w") as f:
             f.write(json.dumps(output_dirac_shift, indent = 4))
+        self.feedback_str.set(f"Wrote results to {output_dirac_file}")
 
     def help_action(self):
         self.feedback_str.set(f"Opened help window")
