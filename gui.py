@@ -526,7 +526,8 @@ class GUI:
                 "sampling message": message_sampling
             }
         }
-        output_qc_file = f"qc_params_{helpers.get_time()}.json"
+        output_dir = self.download_dir if self.download_dir != CONSTANTS.DOWNLOAD_STR else "."
+        output_qc_file = f"{output_dir}/qc_params_{helpers.get_time()}.json"
         with open(output_qc_file, "w") as f:
             f.write(json.dumps(output_qc_parameters, indent = 4))
         self.feedback_str.set(f"Wrote results to {output_qc_file}")
@@ -559,7 +560,8 @@ class GUI:
         self.abs_dirac_shift = dirac_shift
         self.modify_Text(self.abs_dirac_shift_textbox, self.abs_dirac_shift)
 
-        output_dirac_file = f"dirac_shift_{helpers.get_time()}.json"
+        output_dir = self.download_dir if self.download_dir != CONSTANTS.DOWNLOAD_STR else "."
+        output_dirac_file = f"{output_dir}/dirac_shift_{helpers.get_time()}.json"
         with open(output_dirac_file, "w") as f:
             f.write(json.dumps(output_dirac_shift, indent = 4))
         self.feedback_str.set(f"Wrote results to {output_dirac_file}")
