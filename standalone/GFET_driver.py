@@ -1330,32 +1330,6 @@ try:
 
     first_entry_in_sampling_loop = True
 
-
-    #================================================================================
-    #HANDLING ARGUMENTS
-    #================================================================================
-    print(f"Arguments count: {len(sys.argv)}")
-    is_filename_set = False
-    use_default_filename = False
-    for i, arg in enumerate(sys.argv):
-        print(f"Argument {i:>6}: {arg}")
-
-        if i == 1:
-            file_name = arg
-            is_filename_set = True
-
-        if i == 2:
-            server_ip = arg
-
-    if is_filename_set:
-        print("------------------------------")
-        print(f'Filename to be used: {file_name}')
-    else:
-        print("------------------------------")
-        print(f'No filename received - Using default time/date filename')
-        use_default_filename = True
-                
-
     # =====================================================================
     # SOCKET CONNECTION
     # =====================================================================
