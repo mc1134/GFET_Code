@@ -52,6 +52,26 @@ USE_FAKE_DATA = False # For generating fake Gate Voltages / Ids for testing with
 # TIA_GAIN_4 = -0.0359382272
 
 
+HELP_STRING = """
+This is the standalone module for the GFET covid board project. The usage of the covid
+board is as follows:
+- Button 1: Runs a baseline.
+- Button 2: Runs a sample.
+- Button 3: Interrupts current process to return to idle state.
+Here is the ideal workflow of the covid board usage:
+1. User powers on the device. Device is in idle state when powered on - this script
+   starts as a result of powering on the device.
+2. User presses button 1. This gathers baseline data and takes approximately 80-100
+   seconds.
+3. After baseline completes, user inserts sample in the device.
+4. User presses button 2. This gathers sampling data and also takes 80-100 seconds.
+   a. Once the sampling completes, a quality control test is run on both data sets
+      unknown to the user. This is to ensure that the readout is not a false +/-.
+   b. If the data passes the quality control step, the dirac calculation is performed.
+      The result will be displayed using the LEDs.
+5. After interpreting the LED lights (see below), the user will press button 3 to
+   return the board to an idle state.
+"""
 
 # SAMPLING PARAMETERS
 SEC = 80  # was 5 TODO: # HOW LONG TO SAMPLE FOR
@@ -1516,9 +1536,6 @@ try:
                     sample_std_dirac_forward_sweep = std_dirac_forward_sweep
                     sample_std_dirac_reverse_sweep = std_dirac_reverse_sweep
 
-                    result_summary_file_header = ['baseline_mean (F)','baseline_mean (R)','baseline_std (F)','baseline_std (R)','sample_mean (F)','sample_mean (R)','sample_std (F)','sample_std (R)','delta_voltage (F)','delta_voltage (R)','result']
-
-
                     delta_voltage_forward = sample_mean_dirac_forward_sweep - baseline_mean_dirac_forward_sweep
                     delta_voltage_reverse = sample_mean_dirac_reverse_sweep - baseline_mean_dirac_reverse_sweep
                     
@@ -1528,107 +1545,13 @@ try:
                     else:
                         result = False
 
-                    conn.sendall(b"###WRITING DATA TO FILE###")
-
-                    with open(timestamp_filename + "_TEST_RESULT.csv", "w") as csv_file: #was 'append'
-                        csv_writer = csv.writer(csv_file, delimiter=',')
-                        csv_writer.writerow(result_summary_file_header)
-                        a = [baseline_mean_dirac_forward_sweep, baseline_mean_dirac_reverse_sweep, baseline_std_dirac_forward_sweep, baseline_std_dirac_reverse_sweep, sample_mean_dirac_forward_sweep, sample_mean_dirac_reverse_sweep, sample_std_dirac_forward_sweep, sample_std_dirac_reverse_sweep, delta_voltage_forward,delta_voltage_reverse,result]
-                        csv_writer.writerow(a)
-
-                    csv_file.close()
-
-                    time.sleep(1)
-
-
-                print("DONE CSV WRITE...\n")
-                
-        
-
-            config_data_filename = timestamp_filename + "_BASELINE_CONFIG_DATA.txt"
-            raw_data_filename = timestamp_filename + "_BASELINE_RAW_DATA.csv"
-            result_summary_filename = timestamp_filename + "_BASELINE_DIRAC_VOLTAGES.csv"
-            raw_data_filename2 = timestamp_filename + "_SAMPLING_RAW_DATA.csv"
-            result_summary_filename2 = timestamp_filename + "_SAMPLING_DIRAC_VOLTAGES.csv"
-
-            file_check_wait = 10
-
-            wait_for_file = True
-            counter = 0
-            while wait_for_file: 
-                if(exists(config_data_filename)):
-                    wait_for_file = False  
-                    break
-                time.sleep(2)
-                counter += 1
-                if(counter > file_check_wait):
-                    conn.sendall(b"###ERROR###")  
-                    break
-
-            wait_for_file = True
-            counter = 0
-            while wait_for_file: 
-                if(exists(raw_data_filename)):
-                    wait_for_file = False
-                    break 
-                time.sleep(2)
-                counter += 1
-                if(counter > file_check_wait):
-                    conn.sendall(b"###ERROR###")  
-                    break
-
-            wait_for_file = True
-            counter = 0
-            while wait_for_file: 
-                if(exists(result_summary_filename)):
-                    wait_for_file = False 
-                    break
-                time.sleep(2) 
-                counter += 1
-                if(counter > file_check_wait):
-                    conn.sendall(b"###ERROR###")  
-                    break
-
-            wait_for_file = True
-            counter = 0
-            while wait_for_file: 
-                if(exists(raw_data_filename2)):
-                    wait_for_file = False 
-                    break
-                time.sleep(2) 
-                counter += 1
-                if(counter > file_check_wait):
-                    conn.sendall(b"###ERROR###")  
-                    break
-
-            wait_for_file = True
-            counter = 0
-            while wait_for_file: 
-                if(exists(result_summary_filename2)):
-                    wait_for_file = False 
-                    break
-                time.sleep(2)
-                counter += 1
-                if(counter > file_check_wait):
-                    conn.sendall(b"###ERROR###")  
-                    break
-
-
             conn.sendall(b"###END PROCESS###")  
-            
 
             #thread_sampling.join()
             thread_led.join()
             thread_cancel.join()
             conn.close() 
             exit()
-            #break#
-            # while True:
-                # data = conn.recv(1024)
-                # print("data: "+str(data))
-
-                # if(data == "")
-                # break #Break and stop main loop
 
         
       
