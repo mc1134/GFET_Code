@@ -1229,6 +1229,16 @@ def update_sys_time():
     return 0
 
 
+##### Method for waiting for button press #####
+BUTTON_PRESSED = "0"
+BUTTON_CHECK_DELAY = 0.5 # seconds
+def wait_for_button(button):
+    while True:
+        with open(f"{GPIO_PATH}/gpio{button}/value") as valueFile:
+            if valueFile.read(1) == BUTTON_PRESSED:
+                break
+            time.sleep(BUTTON_CHECK_DELAY)
+
 
 
 # ================================================================================
