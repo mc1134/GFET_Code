@@ -153,16 +153,9 @@ GPIO_CHAN_NUM_LED_GREEN = "143"         # GREEN
 GPIO_CHAN_NUM_LED_BLUE = "142"          # RED
 GPIO_CHAN_NUM_LED_BLUE = "146"          # AMBER
 
-# GPIO_CHAN_NUM_BUTTON1 = "48"           #BUTTON #1 !! DISABLED DUE TO CONFLICT IN DEVICE TREE!!
-GPIO_CHAN_NUM_BUTTON2 = "72"  # BUTTON #2 NOT USED AT THE MOMENT
-GPIO_CHAN_NUM_BUTTON3 = "106"  # BUTTON #3
-
-
-# STRUCTURE OF THE OUTPUT FILE - IF CHANGED: CHANGE THE WRITE_TO_FILE ORDER AS WELL
-raw_data_file_header = ['Time', 'd_time', 's_time', 'fs_time', 'Gate Voltage', 'Ids',
-                        'raw_adc_binary_ch1', 'raw_adc_binary_ch2', 'raw_adc_voltage_ch1', 'raw_adc_voltage_ch2', 'Slope', 'Peak']
-dirac_voltage_summary_file_header = ['Dirac Voltages', 'Sweep Type', 'Result']
-# config_string = "" #FOR SAVING CONFIG FILE
+GPIO_CHAN_NUM_BUTTON1 = "48" # MAY HAVE CONFLICT IN DEVICE TREE!!
+GPIO_CHAN_NUM_BUTTON2 = "72"
+GPIO_CHAN_NUM_BUTTON3 = "106"
 
 
 # =================================================================================
@@ -1422,12 +1415,116 @@ TIA_GAIN_2 = data["ADC_CALIB"][0]["TIA_GAIN_2"]
 TIA_GAIN_3 = data["ADC_CALIB"][0]["TIA_GAIN_3"]
 TIA_GAIN_4 = data["ADC_CALIB"][0]["TIA_GAIN_4"]
 
+##### STATES #####
+states = {
+    "IDLE": {
+        "color": "YELLOW",
+        "flashing": False
+    },
+    "BASELINE_RUNNING": {
+        "color": "BLUE",
+        "flashing": True
+    },
+    "BASELINE_COMPLETE": {
+        "color": "BLUE",
+        "flashing": False
+    },
+    "SAMPLING_RUNNING": {
+        "color": "MAGENTA",
+        "flashing": True
+    },
+    "SAMPLING_COMPLETE": {
+        "color": "MAGENTA",
+        "flashing": False
+    },
+    "BAD_QC": {
+        "color": "YELLOW",
+        "flashing": True
+    },
+    "RESULT_POSITIVE": {
+        "color": "RED",
+        "flashing": False
+    },
+    "RESULT_NEGATIVE": {
+        "color": "GREEN",
+        "flashing": False
+    },
+    "RESULT_INCONCLUSIVE": {
+        "color": "CYAN",
+        "flashing": False
+    },
+    "ERROR": {
+        "color": "RED",
+        "flashing": True
+    }
+}
 
+def start_LED_thread(obj):
+    thr = LED_thread(obj["color"], obj["flashing"])
+    thr.start()
+    return thr
 
+buffer = 5 # mV
+threshold = 80 # mV
+def main():
+    global running_flashing_LED
+
+    while True:
+        try:
+            ##### IDLE #####
+            thr = start_LED_thread(states["IDLE"]) # nonflashing LED threads are generally unused
+            wait_for_button(GPIO_CHAN_NUM_BUTTON1)
+
+            ##### BASELINE #####
+            running_flashing_LED = True
+            thr = start_LED_thread(states["BASELINE_RUNNING"])
+            time.sleep(5) # simulates threaded call to baseline data collection
+            running_flashing_LED = False
+            thr.join(1) # wait up to 1 second for thread to wrap up
+            thr = start_LED_thread(states["BASELINE_COMPLETE"])
+            wait_for_button(GPIO_CHAN_NUM_BUTTON2)
+
+            ##### SAMPLING #####
+            running_flashing_LED = True
+            thr = start_LED_thread(states["SAMPLING_RUNNING"])
+            time.sleep(5) # simulates threaded call to baseline data collection
+            running_flashing_LED = False
+            thr.join(1) # wait up to 1 second for thread to wrap up
+            thr = start_LED_thread(states["SAMPLING_COMPLETE"])
+
+            ##### QC #####
+            my_random_number = int(time.time() / 100000)
+            print(f"my_random_number: {my_random_number}")
+            if my_random_number % 2 == 0: # quality control FAILED
+                running_flashing_LED = True
+                thr = start_LED_thread(states["BAD_QC"])
+                wait_for_button(GPIO_CHAN_NUM_BUTTON3)
+                running_flashing_LED = False
+                thr.join(1)
+            else:
+                ##### RESULTS #####
+                abs_dirac_voltage = abs((time.time() % 1) * 160)
+                print(f"random dirac voltage: {abs_dirac_voltage}")
+                if abs_dirac_voltage < threshold - buffer:
+                    thr = start_LED_thread(states["NEGATIVE"])
+                elif abs_dirac_voltage > threshold + buffer:
+                    thr = start_LED_thread(states["POSITIVE"])
+                else:
+                    thr = start_LED_thread(states["INCONCLUSIVE"])
+                wait_for_button(GPIO_CHAN_NUM_BUTTON3)
+        except Exception as e:
+            print("Something went wrong. Exception details:")
+            print(e)
+            running_flashing_LED = True
+            thr = start_LED_thread(states["ERROR"])
+            wait_for_button(GPIO_CHAN_NUM_BUTTON3)
+            running_flashing_LED = False
+            thr.join(1)
 
 
 
 try:
+    1/0 # early exit
     os.system("echo 0 > /sys/class/gpio/gpio142/value")  # RED
     os.system("echo 1 > /sys/class/gpio/gpio143/value")  # GREEN - WIFI CONNECTED AND TIME UPDATED
     os.system("echo 0 > /sys/class/gpio/gpio146/value")  # AMBER
