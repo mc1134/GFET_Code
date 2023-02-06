@@ -57,7 +57,8 @@ This is the standalone module for the GFET covid board project. The usage of the
 board is as follows:
 - Button 1: Runs a baseline.
 - Button 2: Runs a sample.
-- Button 3: Interrupts current process to return to idle state.
+- Button 3: Interrupts current process to return to idle state. Any recorded data is
+  discarded.
 Here is the ideal workflow of the covid board usage:
 1. User powers on the device. Device is in idle state when powered on - this script
    starts as a result of powering on the device.
@@ -71,6 +72,30 @@ Here is the ideal workflow of the covid board usage:
       The result will be displayed using the LEDs.
 5. After interpreting the LED lights (see below), the user will press button 3 to
    return the board to an idle state.
+
+How to interpret LED lights:
+- SOLID YELLOW: The board is in an idle state. The user should press button 1 to
+  take baseline data.
+- FLASHING BLUE: The board is currently taking baseline data. The user may interrupt
+  this by pressing button 3, which returns the board to an idle state.
+- SOLID BLUE: The board has finished taking baseline data. The user should press button
+  2 to take sampling data.
+- FLASHING PURPLE: The board is currently taking sampling data. The user may interrupt
+  this by pressing button 3, which returns the board to an idle state.
+- SOLID PURPLE: The board has finished taking sampling data. This color should be quite
+  rare to see as the board will automatically move on to quality control analysis.
+- FLASHING YELLOW: The board has calculated a bad chip result from quality control
+  analysis. The user should press button 3 to return the board to an idle state.
+- SOLID RED: The board has finished with a POSITIVE result - the absolute dirac
+  voltage calculation exceeds the set threshold. I.E. you probably have covid. The
+  user should press button 3 to return the board to an idle state.
+- SOLID GREEN: The board has finished with a NEGATIVE result - the absolute dirac
+  voltage calculation is within the set threshold. The user should press button 3
+  to return the board to an idle state.
+- FLASHING RED: Something went wrong that is not part of the predefined workflow.
+  Usually this will have something to do with an error in the code and not on the
+  user's part - attempting mathematics with non-numeric variables, for instance.
+  The user should press button 3 to return the board to an idle state.
 """
 
 # SAMPLING PARAMETERS
