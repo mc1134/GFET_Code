@@ -80,9 +80,9 @@ How to interpret LED lights:
   this by pressing button 3, which returns the board to an idle state.
 - SOLID BLUE: The board has finished taking baseline data. The user should press button
   2 to take sampling data.
-- FLASHING PURPLE: The board is currently taking sampling data. The user may interrupt
+- FLASHING MAGENTA: The board is currently taking sampling data. The user may interrupt
   this by pressing button 3, which returns the board to an idle state.
-- SOLID PURPLE: The board has finished taking sampling data. This color should be quite
+- SOLID MAGENTA: The board has finished taking sampling data. This color should be quite
   rare to see as the board will automatically move on to quality control analysis.
 - FLASHING YELLOW: The board has calculated a bad chip result from quality control
   analysis. The user should press button 3 to return the board to an idle state.
@@ -92,6 +92,9 @@ How to interpret LED lights:
 - SOLID GREEN: The board has finished with a NEGATIVE result - the absolute dirac
   voltage calculation is within the set threshold. The user should press button 3
   to return the board to an idle state.
+- SOLID CYAN: The board has finished with an INCONCLUSIVE result - the absolute
+  dirac voltage calculation is within a "buffer" zone, i.e. (threshold) +- (buffer).
+  The user should press button 3 to return the board to an idle state.
 - FLASHING RED: Something went wrong that is not part of the predefined workflow.
   Usually this will have something to do with an error in the code and not on the
   user's part - attempting mathematics with non-numeric variables, for instance.
@@ -1284,6 +1287,71 @@ def wait_for_button(button):
                 break
             time.sleep(BUTTON_CHECK_DELAY)
 
+running_LED = False
+LED_flash_delay = 0.5 # seconds
+class LED_thread(threading.Thread):
+    """
+    Class for solid and flashing LED lights. Technically speaking, the light
+    will alternate between "BLACK" (all lights off) and the chosen color.
+    Currently only supports RGBCMYW colors.
+    """
+    def __init__(self, color, flashing = False):
+        threading.Thread.__init__(self)
+        self.color = color
+        self.flashing = flashing
+
+    def get_color_set(self):
+        # note: can use match keyword for python 3.10+
+        if self.color == "RED":
+            return [GPIO_CHAN_NUM_LED_RGB_RED]
+        elif self.color == "GREEN":
+            return [GPIO_CHAN_NUM_LED_RGB_GREEN]
+        elif self.color == "BLUE":
+            return [GPIO_CHAN_NUM_LED_RGB_BLUE]
+        elif self.color == "CYAN":
+            return [GPIO_CHAN_NUM_LED_RGB_GREEN,
+                    GPIO_CHAN_NUM_LED_RGB_BLUE]
+        elif self.color == "MAGENTA":
+            return [GPIO_CHAN_NUM_LED_RGB_BLUE,
+                    GPIO_CHAN_NUM_LED_RGB_RED]
+        elif self.color == "YELLOW":
+            return [GPIO_CHAN_NUM_LED_RGB_RED,
+                    GPIO_CHAN_NUM_LED_RGB_GREEN]
+        elif self.color == "WHITE":
+            return [GPIO_CHAN_NUM_LED_RGB_RED,
+                    GPIO_CHAN_NUM_LED_RGB_GREEN,
+                    GPIO_CHAN_NUM_LED_RGB_BLUE]
+        return [] # base case: color not recognized, don't toggle any lights
+
+    def turn_on_leds(self, LEDs):
+        for COLOR in LEDs:
+            with open(f"{GPIO_PATH}/gpio{COLOR}/value", "w") as f:
+                f.write(GPIO_VAL_HI)
+                f.flush()
+
+    def turn_off_leds(self, LEDs):
+        for COLOR in LEDs:
+            with open(f"{GPIO_PATH}/gpio{COLOR}/value", "w") as f:
+                f.write(GPIO_VAL_LO)
+                f.flush()
+
+    def turn_off_all_leds(self):
+        self.turn_off_leds([GPIO_CHAN_NUM_LED_RGB_RED,
+                            GPIO_CHAN_NUM_LED_RGB_GREEN,
+                            GPIO_CHAN_NUM_LED_RGB_BLUE])
+
+    def run(self):
+        global running_flashing_LED
+        LED_set = self.get_color_set()
+        if self.flashing:
+            while running_flashing_LED:
+                time.sleep(LED_flash_delay)
+                self.turn_on_leds(LED_set)
+                time.sleep(LED_flash_delay)
+                self.turn_off_leds(LED_set)
+        else:
+            self.turn_off_all_leds()
+            self.turn_on_leds(LED_set)
 
 
 # ================================================================================
