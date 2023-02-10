@@ -55,14 +55,14 @@ USE_FAKE_DATA = False # For generating fake Gate Voltages / Ids for testing with
 HELP_STRING = """
 This is the standalone module for the GFET covid board project. The usage of the covid
 board is as follows:
-- Button 1: Runs a baseline.
+- Button 2: Runs a baseline.
 - Button 2: Runs a sample.
 - Button 3: Interrupts current process to return to idle state. Any recorded data is
   discarded.
 Here is the ideal workflow of the covid board usage:
 1. User powers on the device. Device is in idle state when powered on - this script
    starts as a result of powering on the device.
-2. User presses button 1. This gathers baseline data and takes approximately 80-100
+2. User presses button 2. This gathers baseline data and takes approximately 80-100
    seconds.
 3. After baseline completes, user inserts sample in the device.
 4. User presses button 2. This gathers sampling data and also takes 80-100 seconds.
@@ -74,7 +74,7 @@ Here is the ideal workflow of the covid board usage:
    return the board to an idle state.
 
 How to interpret LED lights:
-- SOLID YELLOW: The board is in an idle state. The user should press button 1 to
+- SOLID YELLOW: The board is in an idle state. The user should press button 2 to
   take baseline data.
 - FLASHING BLUE: The board is currently taking baseline data. The user may interrupt
   this by pressing button 3, which returns the board to an idle state.
@@ -1464,7 +1464,7 @@ def start_LED_thread(obj):
     thr.start()
     return thr
 
-buffer = 5 # mV
+buffer = 10 # mV
 threshold = 80 # mV
 def main():
     global running_flashing_LED
@@ -1473,7 +1473,7 @@ def main():
         try:
             ##### IDLE #####
             thr = start_LED_thread(states["IDLE"]) # nonflashing LED threads are generally unused
-            wait_for_button(GPIO_CHAN_NUM_BUTTON1)
+            wait_for_button(GPIO_CHAN_NUM_BUTTON2)
 
             ##### BASELINE #####
             running_flashing_LED = True
@@ -1506,11 +1506,11 @@ def main():
                 abs_dirac_voltage = abs((time.time() % 1) * 160)
                 print(f"random dirac voltage: {abs_dirac_voltage}")
                 if abs_dirac_voltage < threshold - buffer:
-                    thr = start_LED_thread(states["NEGATIVE"])
+                    thr = start_LED_thread(states["RESULT_NEGATIVE"])
                 elif abs_dirac_voltage > threshold + buffer:
-                    thr = start_LED_thread(states["POSITIVE"])
+                    thr = start_LED_thread(states["RESULT_POSITIVE"])
                 else:
-                    thr = start_LED_thread(states["INCONCLUSIVE"])
+                    thr = start_LED_thread(states["RESULT_INCONCLUSIVE"])
                 wait_for_button(GPIO_CHAN_NUM_BUTTON3)
         except Exception as e:
             print("Something went wrong. Exception details:")
@@ -1520,7 +1520,7 @@ def main():
             wait_for_button(GPIO_CHAN_NUM_BUTTON3)
             running_flashing_LED = False
             thr.join(1)
-
+main()
 
 
 try:
