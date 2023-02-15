@@ -1258,32 +1258,14 @@ class samplingThread (threading.Thread):
         if not running:
             return
 
-        config_data_filename = ""
-        raw_data_filename = ""
-        result_summary_filename = ""
-
-        if self.sampling_mode == THREAD_SAMPLING_MODE_BASELINE: #BASELINE
-            # config_data_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_CONFIG_DATA.txt")
-            # raw_data_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_RAW_DATA.csv")
-            # result_summary_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_RESULT_SUMMARY.csv")
-        
-            config_data_filename = self.filename_str + "_BASELINE_CONFIG_DATA.txt"
-            raw_data_filename = self.filename_str + "_BASELINE_RAW_DATA.csv"
-            result_summary_filename = self.filename_str + "_BASELINE_DIRAC_VOLTAGES.csv"
-
-        else: #SAMPLING
-            #config_data_filename = self.filename_str + "_SAMPLING_CONFIG_DATA.txt"
-            raw_data_filename = self.filename_str + "_SAMPLING_RAW_DATA.csv"
-            result_summary_filename = self.filename_str + "_SAMPLING_DIRAC_VOLTAGES.csv"
+        config_data_filename = datetime.datetime.now().strftime(f"%Y%m%d_%H%M%S_{self.sampling_mode}_CONFIG_DATA.txt")
+        raw_data_filename = datetime.datetime.now().strftime(f"%Y%m%d_%H%M%S_{self.sampling_mode}_RAW_DATA.csv")
+        result_summary_filename = datetime.datetime.now().strftime(f"%Y%m%d_%H%M%S_{self.sampling_mode}_RESULT_SUMMARY.csv")
 
 
         # ===========================================================
         # WRITE DATA TO FILE
         # ===========================================================
-
-        #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
-        if not running:
-            return
 
         print("STARTING RAW DATA CSV WRITE...\n")
 
@@ -1539,6 +1521,7 @@ buffer = 10 # mV
 threshold = 80 # mV
 def main():
     global running_flashing_LED
+    global running # used for deciding if data collection thread should stop
 
     while True:
         try:
