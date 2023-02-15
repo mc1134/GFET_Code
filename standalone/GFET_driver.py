@@ -1287,6 +1287,9 @@ class LED_thread(threading.Thread):
     Class for solid and flashing LED lights. Technically speaking, the light
     will alternate between "BLACK" (all lights off) and the chosen color.
     Currently only supports RGBCMYW colors.
+    Flashing behavior: turns off all LEDs, then flashes, then once flashing
+    is complete, turns off all LEDs
+    Solid behavior: turns off all LEDs, then turns on specified LED(s)
     """
     def __init__(self, color, flashing = False):
         threading.Thread.__init__(self)
@@ -1336,12 +1339,14 @@ class LED_thread(threading.Thread):
     def run(self):
         global running_flashing_LED
         LED_set = self.get_color_set()
+        self.turn_off_all_leds()
         if self.flashing:
             while running_flashing_LED:
                 time.sleep(LED_flash_delay)
                 self.turn_on_leds(LED_set)
                 time.sleep(LED_flash_delay)
                 self.turn_off_leds(LED_set)
+            self.turn_off_all_leds()
         else:
             self.turn_off_all_leds()
             self.turn_on_leds(LED_set)
@@ -1522,247 +1527,13 @@ def main():
             thr.join(1)
 main()
 
+# CLOSE SPI ACCESS
+spi.close()
 
-try:
-    1/0 # early exit
-    os.system("echo 0 > /sys/class/gpio/gpio142/value")  # RED
-    os.system("echo 1 > /sys/class/gpio/gpio143/value")  # GREEN - WIFI CONNECTED AND TIME UPDATED
-    os.system("echo 0 > /sys/class/gpio/gpio146/value")  # AMBER
+os.system("echo 0 > /sys/class/gpio/gpio142/value")  # RED
+os.system("echo 0 > /sys/class/gpio/gpio143/value")  # GREEN
+os.system("echo 0 > /sys/class/gpio/gpio146/value")  # AMBER
 
-    os.system("echo 0 > /sys/class/gpio/gpio149/value")  # RGB RED
-    os.system("echo 0 > /sys/class/gpio/gpio148/value")  # RGB GREEN
-    os.system("echo 0 > /sys/class/gpio/gpio147/value")  # RGB BLUE
-
-
-    # Write ADC config
-    write_init_config()
-    read_config(True)
-
-    first_entry_in_sampling_loop = True
-
-    # =====================================================================
-    # SOCKET CONNECTION
-    # =====================================================================
-
-    HOST = server_ip #'192.168.1.14'#check_internet() ##'192.168.1.14' #check_internet()#'192.168.1.5' #list_devices_ip[0]   #'127.0.0.1'  # Standard loopback interface address (localhost)
-    PORT = 65432                # Port to listen on (non-privileged ports are > 1023)
-    #@time.sleep(5)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOST, PORT))
-        s.listen()
-        conn, addr = s.accept()
-        with conn:
-            print('Connected by', addr)
-            #while True:
-
-            data = conn.recv(1024)
-            print("data: "+str(data))
-            #if not data:
-            #    break
-
-            conn.sendall(b"#START1 STARTED")
-            
-
-            # =====================================================================
-            # MAIN LOOP
-            # =====================================================================
-            #while True:
-            data = conn.recv(1024)
-            print("data: "+str(data))
-            
-            
-            #RESET MEAN VALUES USED IN SAMPLING LOOP
-            mean_dirac_forward_sweep = 0
-            mean_dirac_reverse_sweep = 0
-            std_dirac_forward_sweep = 0
-            std_dirac_reverse_sweep = 0
-            baseline_mean_dirac_forward_sweep = 0
-            baseline_mean_dirac_reverse_sweep = 0
-            sample_mean_dirac_forward_sweep = 0
-            sample_mean_dirac_reverse_sweep = 0
-
-
-            #RESET BOOLEAN FOR MANAGING THREADS
-            stop_sampling_process = False
-            running = True
-            ready_for_sample = False
-
-            # PRESS BUTTON #2 TO START BASELINE SAMPLING
-            # =============================================================
-
-            conn.sendall(b"###WAITING FOR BUTTON 2###")
-
-            while True:
-
-                valueFile_button2 = open(
-                    GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_BUTTON2+'/value', 'r')
-                button_pressed = valueFile_button2.read(1)
-                valueFile_button2.close()
-
-                if(button_pressed == '0'):
-                    break  # continue to measurement
-
-                time.sleep(0.5)
-
-            # START BLUE LED THREAD
-            # SOURCE: https://www.tutorialspoint.com/python3/python_multithreading.htm
-
-
-            #DEFINES - MODE TO TOP SOMEWHERE
-            THREAD_SAMPLING_MODE_BASELINE = 1
-            THREAD_SAMPLING_MODE_SAMPLE = 2
-            THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE = 3
-
-            #FILE NAME FROM TIMESTAMP:
-            if (use_default_filename):
-                timestamp_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            else:
-                timestamp_filename = file_name
-            thread_sampling = samplingThread(1, "Thread-Sampling", THREAD_SAMPLING_MODE_BASELINE, timestamp_filename) #BASE
-            thread_led = ledThread(2, "Thread-LED", THREAD_SAMPLING_MODE_BASELINE)
-            thread_cancel = cancelThread(3, "Thread-Cancel")
-
-
-            print("BASELINE: FETCHING DATA...\n")
-            
-            conn.sendall(b"###BUTTON 2 PRESSED AND SAMPLING###")
-
-            thread_sampling.start()
-            thread_led.start()
-            if first_entry_in_sampling_loop:
-                thread_cancel.start()
-                first_entry_in_sampling_loop = False
-
-
-            #CHECK FOR CANCEL OPERATION WHILE SAMPLING BASELINE
-            thread_running = thread_sampling.is_alive()
-            while (thread_running):
-                if stop_sampling_process:
-                    running = False
-                    print("CANCELLED TEST DURING BASELINE...\n")
-                    conn.sendall(b"###CANCEL###")
-                    break
-                thread_running = thread_sampling.is_alive()
-                time.sleep(0.5)
-
-            #SOME SORT OF CHECK THAT BASELINE WAS OK
-            #IF(BASELINE == OK)
-                #CONTINUE
-            #ELSE
-                #STOP
-
-            #WAIT FOR LED THREAD TO FINISH
-            thread_led.join(600)
-
-            baseline_mean_dirac_forward_sweep = mean_dirac_forward_sweep
-            baseline_mean_dirac_reverse_sweep = mean_dirac_reverse_sweep
-            baseline_std_dirac_forward_sweep = std_dirac_forward_sweep
-            baseline_std_dirac_reverse_sweep = std_dirac_reverse_sweep
-
-            if not stop_sampling_process:
-
-                # WAIT FOR USER TO INSERT SAMPLE AND PRESS BUTTON 3
-                thread_led = ledThread(2, "Thread-LED", THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE)#TODO: set last arg to mode: handle LEDS HERE!
-                thread_led.start()
-            
-                # PRESS BUTTON #3 TO START SAMPLE SAMPLING
-                # =============================================================
-                
-                print("\n========================================================")
-                print("SYSTEM READY: Press Button #3 to start")
-                print("========================================================")
-
-                conn.sendall(b"###WAITING FOR BUTTON 3###")
-
-                while True:
-
-                    valueFile_button3 = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_BUTTON3+'/value', 'r')
-                    button_pressed3 = valueFile_button3.read(1)
-                    valueFile_button3.close()
-
-                    #CHECK FOR CANCEL OPERATION WHILE SAMPLING BASELINE
-                    thread_running = thread_led.is_alive()
-                    if stop_sampling_process:
-                        running = False
-                        print("CANCELLED TEST WHILE WAITING FOR SAMPLE...\n")
-                        conn.sendall(b"###CANCEL###")
-                        break
-
-                    #CONTINUE AFTER SAMPLE HAS BEEN INCERTED
-                    elif(button_pressed3 == '0'):
-                        #TRIGGER LED THREAD TO END
-                        ready_for_sample = True
-
-                        #WAIT FOR LED THREAD TO FINISH
-                        thread_led.join(100)
-
-                        break  # continue to measurement
-                    time.sleep(0.5)
-
-                if not stop_sampling_process:
-
-                    #RESTART LED AND SAMPLING THREADS
-                    thread_sampling = samplingThread(1, "Thread-Sampling", THREAD_SAMPLING_MODE_SAMPLE, timestamp_filename) 
-                    thread_led = ledThread(2, "Thread-LED", THREAD_SAMPLING_MODE_SAMPLE)
-                    print("SAMPLE: FETCHING DATA...\n")
-                    
-                    conn.sendall(b"###BUTTON 3 PRESSED AND SAMPLING###")
-
-                    thread_sampling.start()
-                    thread_led.start()
-                    
-                    thread_running = thread_sampling.is_alive()
-                    while (thread_running):
-                        if stop_sampling_process:
-                            running = False
-                            print("CANCELLED TEST DURING WHILE SAMPLE WAS BEING ANALYZED...\n")
-                            conn.sendall(b"###CANCEL###")
-                            break
-                        thread_running = thread_sampling.is_alive()
-                        time.sleep(0.5)
-                    
-                    sample_mean_dirac_forward_sweep = mean_dirac_forward_sweep
-                    sample_mean_dirac_reverse_sweep = mean_dirac_reverse_sweep
-                    sample_std_dirac_forward_sweep = std_dirac_forward_sweep
-                    sample_std_dirac_reverse_sweep = std_dirac_reverse_sweep
-
-                    delta_voltage_forward = sample_mean_dirac_forward_sweep - baseline_mean_dirac_forward_sweep
-                    delta_voltage_reverse = sample_mean_dirac_reverse_sweep - baseline_mean_dirac_reverse_sweep
-                    
-                    #CHECK RESULT
-                    if delta_voltage_forward > .140:
-                        result = True
-                    else:
-                        result = False
-
-            conn.sendall(b"###END PROCESS###")  
-
-            #thread_sampling.join()
-            thread_led.join()
-            thread_cancel.join()
-            conn.close() 
-            exit()
-
-        
-      
-
-
-finally:
-
-    # CLOSE SPI ACCESS
-    spi.close()
-
-    os.system("echo 0 > /sys/class/gpio/gpio142/value")  # RED
-    os.system("echo 0 > /sys/class/gpio/gpio143/value")  # GREEN
-    os.system("echo 0 > /sys/class/gpio/gpio146/value")  # AMBER
-
-    os.system("echo 0 > /sys/class/gpio/gpio149/value")  # RGB RED
-    os.system("echo 0 > /sys/class/gpio/gpio148/value")  # RGB GREEN
-    os.system("echo 0 > /sys/class/gpio/gpio147/value")  # RGB BLUE
-
-    # CLOSE BUTTON AND LED GPIO FILES
-    # valueFile_button3.close()
-    # valueFile_LED_RGB_GREEN.close() #CLOSED IN THREAD
-    # GPIO.cleanup()
-
-    #print("###END PROCESS###")
+os.system("echo 0 > /sys/class/gpio/gpio149/value")  # RGB RED
+os.system("echo 0 > /sys/class/gpio/gpio148/value")  # RGB GREEN
+os.system("echo 0 > /sys/class/gpio/gpio147/value")  # RGB BLUE
