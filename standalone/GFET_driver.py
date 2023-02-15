@@ -1252,6 +1252,72 @@ class samplingThread (threading.Thread):
         std_dirac_forward_sweep = np.std(dirac_forward_sweep, axis=0)
         std_dirac_reverse_sweep = np.std(dirac_reverse_sweep, axis=0)
 
+        print("SAVING DATA...\n")
+
+        #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
+        if not running:
+            return
+
+        config_data_filename = ""
+        raw_data_filename = ""
+        result_summary_filename = ""
+
+        if self.sampling_mode == THREAD_SAMPLING_MODE_BASELINE: #BASELINE
+            # config_data_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_CONFIG_DATA.txt")
+            # raw_data_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_RAW_DATA.csv")
+            # result_summary_filename = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_RESULT_SUMMARY.csv")
+        
+            config_data_filename = self.filename_str + "_BASELINE_CONFIG_DATA.txt"
+            raw_data_filename = self.filename_str + "_BASELINE_RAW_DATA.csv"
+            result_summary_filename = self.filename_str + "_BASELINE_DIRAC_VOLTAGES.csv"
+
+        else: #SAMPLING
+            #config_data_filename = self.filename_str + "_SAMPLING_CONFIG_DATA.txt"
+            raw_data_filename = self.filename_str + "_SAMPLING_RAW_DATA.csv"
+            result_summary_filename = self.filename_str + "_SAMPLING_DIRAC_VOLTAGES.csv"
+
+
+        # ===========================================================
+        # WRITE DATA TO FILE
+        # ===========================================================
+
+        #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
+        if not running:
+            return
+
+        print("STARTING RAW DATA CSV WRITE...\n")
+
+        with open(raw_data_filename, "w") as csv_file: #was 'append'
+            csv_writer = csv.writer(csv_file, delimiter=',')
+            csv_writer.writerow(raw_data_file_header)
+
+            n = 0
+            while n < index_t:
+                a = [_time[n], _d_time[n], _s_time[n], _fs_time[n], Vgate[n], Ids[n],
+                     _adc_A[n], _adc_B[n], _voltage_A[n], _voltage_B[n], _slope[n], _peak[n]]
+                n += 1
+                csv_writer.writerow(a)
+            
+            csv_file.close()
+
+        print("DONE CSV WRITE...\n")
+
+        print("STARTING SUMMARY DATA CSV WRITE...\n")
+
+        with open(result_summary_filename, "w") as csv_file: #was 'append'
+            csv_writer = csv.writer(csv_file, delimiter=',')
+            csv_writer.writerow(dirac_voltage_summary_file_header)
+
+            n = 0
+            for i in range(len(start)):
+                a = [Dirac[i], sweep_type[i], 0]
+                n += 1
+                csv_writer.writerow(a)
+            
+            csv_file.close()
+
+        print("DONE CSV WRITE...\n")
+
         os.system("echo 0 > /sys/class/gpio/gpio146/value")  # AMBER
         os.system("echo 0 > /sys/class/gpio/gpio147/value")
 
