@@ -854,7 +854,7 @@ class ledThread (threading.Thread):
         global ready_for_sample
 
         while(running):
-            if(self.sampling_mode == THREAD_SAMPLING_MODE_BASELINE):#BASELINE
+            if(self.sampling_mode == "BASELINE"): # THREAD_SAMPLING_MODE_BASELINE
                 valueFile_LED_RGB_BLUE = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_LED_RGB_BLUE+'/value', 'w')
                 time_start = time.time()
                 while time.time()-time_start < SEC+2 and running:
@@ -870,7 +870,7 @@ class ledThread (threading.Thread):
                 #FINISHED SAMPLING OR CANCELLED BASELINE READ - EXIT THREAD
                 return
 
-            elif(self.sampling_mode == THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE):#SAMPLE
+            elif(self.sampling_mode == "SAMPLING"): # THREAD_SAMPLING_MODE_WAIT_FOR_SAMPLE
                 valueFile_LED_RGB_GREEN = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_LED_RGB_GREEN+'/value', 'w')
                 time_start = time.time()
                 
@@ -932,23 +932,16 @@ class ledThread (threading.Thread):
 # ================================================================================
 # SAMPLING THREAD
 # ================================================================================
-class samplingThread (threading.Thread):
+class sampling_thread (threading.Thread):
 
     sampling_mode = 0
     filename_str = ""
 
-    def __init__(self, threadID, name, mode, timestamp):
+    def __init__(self, mode):
         threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
         self.sampling_mode = mode #BASELINE OR SAMPLING
-        self.filename_str = timestamp
 
     def run(self):
-        #   print ("Starting " + self.name)
-        #   print_time(self.name, self.counter, 5)
-        #   print ("Exiting " + self.name)
-
         # INITIATE ARRAYS
         # =============================================================
 
@@ -978,6 +971,7 @@ class samplingThread (threading.Thread):
         last_conv_time = time.time()
 
         global running
+        global completed
         global mean_dirac_forward_sweep
         global mean_dirac_reverse_sweep
 
@@ -1302,8 +1296,7 @@ class samplingThread (threading.Thread):
 
         print("DONE CSV WRITE...\n")
 
-        os.system("echo 0 > /sys/class/gpio/gpio146/value")  # AMBER
-        os.system("echo 0 > /sys/class/gpio/gpio147/value")
+        completed = True
 
 
 def update_sys_time():
@@ -1519,6 +1512,11 @@ def start_LED_thread(obj):
     thr.start()
     return thr
 
+def start_data_collection(mode):
+    thr = sampling_thread(mode)
+    thr.start()
+    thr.join(120) # wait at most 2 minutes for data collection to complete. this is a blocking call
+
 buffer = 10 # mV
 threshold = 80 # mV
 def main():
@@ -1534,7 +1532,10 @@ def main():
             ##### BASELINE #####
             running_flashing_LED = True
             thr = start_LED_thread(states["BASELINE_RUNNING"])
-            time.sleep(5) # simulates threaded call to baseline data collection
+            completed = False
+            start_data_collection("BASELINE")
+            if not completed:
+                raise Exception("Baseline did not complete execution")
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
             thr = start_LED_thread(states["BASELINE_COMPLETE"])
@@ -1543,7 +1544,10 @@ def main():
             ##### SAMPLING #####
             running_flashing_LED = True
             thr = start_LED_thread(states["SAMPLING_RUNNING"])
-            time.sleep(5) # simulates threaded call to baseline data collection
+            completed = False
+            start_data_collection("SAMPLING")
+            if not completed:
+                raise Exception("Sampling did not complete execution")
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
