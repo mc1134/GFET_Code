@@ -153,9 +153,11 @@ GPIO_CHAN_NUM_LED_GREEN = "143"         # GREEN
 GPIO_CHAN_NUM_LED_BLUE = "142"          # RED
 GPIO_CHAN_NUM_LED_BLUE = "146"          # AMBER
 
-GPIO_CHAN_NUM_BUTTON1 = "48" # MAY HAVE CONFLICT IN DEVICE TREE!!
+#GPIO_CHAN_NUM_BUTTON1 = "48" # MAY HAVE CONFLICT IN DEVICE TREE!!
 GPIO_CHAN_NUM_BUTTON2 = "72"
-GPIO_CHAN_NUM_BUTTON3 = "106"
+GPIO_CHAN_NUM_BUTTON1 = "106"
+# When the lights are on the top of the device, in descending order the buttons
+# have IDs 106, 72, 48, hence why old button3 is now button1
 
 
 # =================================================================================
@@ -823,7 +825,7 @@ class cancelThread (threading.Thread):
             button_pressed2 = valueFile_button2.read(1)
             valueFile_button2.close()
 
-            valueFile_button3 = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_BUTTON3+'/value', 'r')
+            valueFile_button3 = open(GPIO_PATH+'/gpio'+GPIO_CHAN_NUM_BUTTON1+'/value', 'r')
             button_pressed3 = valueFile_button3.read(1)
             valueFile_button3.close()
 
@@ -1552,7 +1554,7 @@ def main():
             if my_random_number % 2 == 0: # quality control FAILED
                 running_flashing_LED = True
                 thr = start_LED_thread(states["BAD_QC"])
-                wait_for_button(GPIO_CHAN_NUM_BUTTON3)
+                wait_for_button(GPIO_CHAN_NUM_BUTTON1)
                 running_flashing_LED = False
                 thr.join(1)
             else:
@@ -1565,13 +1567,13 @@ def main():
                     thr = start_LED_thread(states["RESULT_POSITIVE"])
                 else:
                     thr = start_LED_thread(states["RESULT_INCONCLUSIVE"])
-                wait_for_button(GPIO_CHAN_NUM_BUTTON3)
+                wait_for_button(GPIO_CHAN_NUM_BUTTON1)
         except Exception as e:
             print("Something went wrong. Exception details:")
             print(e)
             running_flashing_LED = True
             thr = start_LED_thread(states["ERROR"])
-            wait_for_button(GPIO_CHAN_NUM_BUTTON3)
+            wait_for_button(GPIO_CHAN_NUM_BUTTON1)
             running_flashing_LED = False
             thr.join(1)
 main()
