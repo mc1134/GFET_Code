@@ -977,6 +977,7 @@ class sampling_thread (threading.Thread):
 
     
         # START SAMPLING LOOP
+        print("Start sampling loop")
         while (((t_start+SEC) > time.time()) or (index_t < SEC*ADC_SAMPLING_RATE)):  # Sample for x secs
 
             #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
@@ -1035,7 +1036,7 @@ class sampling_thread (threading.Thread):
         # =============================================================================
         # POST PROCESSING - FIND SECTIONS BETWEEN PEAKS ON TRIAGLE
         # =============================================================================
-
+        print("Post processing: finding peaks on triangle")
         #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
         if not running:
             return
@@ -1181,7 +1182,7 @@ class sampling_thread (threading.Thread):
         # =============================================================================
         # POST PROCESSING : FITTING CURVE TO DATA
         # =============================================================================
-
+        print("Post processing: fitting curve to data")
         #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
         if not running:
             return
@@ -1512,10 +1513,11 @@ def start_LED_thread(obj):
     thr.start()
     return thr
 
+sampling_wait_time = 180 # wait at most 3 minutes for data collection to complete
 def start_data_collection(mode):
     thr = sampling_thread(mode)
     thr.start()
-    thr.join(120) # wait at most 2 minutes for data collection to complete. this is a blocking call
+    thr.join(sampling_wait_time) # this is a blocking call
 
 buffer = 10 # mV
 threshold = 80 # mV
@@ -1534,10 +1536,10 @@ def main():
             thr = start_LED_thread(states["BASELINE_RUNNING"])
             completed = False
             start_data_collection("BASELINE")
-            if not completed:
-                raise Exception("Baseline did not complete execution")
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
+            if not completed:
+                raise Exception("Baseline did not complete execution")
             thr = start_LED_thread(states["BASELINE_COMPLETE"])
             wait_for_button(GPIO_CHAN_NUM_BUTTON2)
 
@@ -1546,10 +1548,10 @@ def main():
             thr = start_LED_thread(states["SAMPLING_RUNNING"])
             completed = False
             start_data_collection("SAMPLING")
-            if not completed:
-                raise Exception("Sampling did not complete execution")
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
+            if not completed:
+                raise Exception("Sampling did not complete execution")
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
 
             ##### QC #####
