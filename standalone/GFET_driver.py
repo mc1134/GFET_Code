@@ -974,8 +974,9 @@ class sampling_thread (threading.Thread):
         global completed
         global mean_dirac_forward_sweep
         global mean_dirac_reverse_sweep
+        global data
+        global Dirac
 
-    
         # START SAMPLING LOOP
         print("Start sampling loop")
         while (((t_start+SEC) > time.time()) or (index_t < SEC*ADC_SAMPLING_RATE)):  # Sample for x secs
@@ -1030,6 +1031,7 @@ class sampling_thread (threading.Thread):
             _d_time[index_t] = time_sample2_end - time_sample1_end
 
             index_t += 1
+			print(f"Current index: {index_t}\nCurrent time: {time.time()")
 
         t_end = time.time()
 
@@ -1041,7 +1043,7 @@ class sampling_thread (threading.Thread):
         if not running:
             return
 
-        os.system("echo 1 > /sys/class/gpio/gpio146/value")  # AMBER
+        #os.system("echo 1 > /sys/class/gpio/gpio146/value")  # AMBER
         print("PROCESSING DATA...\n")
 
         forward_sections = [[0] * NN for i in range(secs)]
@@ -1196,6 +1198,8 @@ class sampling_thread (threading.Thread):
             Ids[i] = _voltage_A[i]/CURRENT_GAIN  # Convert to current
 
             # print("Vgate[i]", Vgate[i], "\tIds[i]", Ids[i])
+
+        data = [[Vgate[i], Ids[i]] for i in range(len(Vgate))] # defining data to be used for quality control
 
         Dirac = []
         dirac_forward_sweep = []
@@ -1395,6 +1399,13 @@ class LED_thread(threading.Thread):
             self.turn_off_all_leds()
             self.turn_on_leds(LED_set)
 
+sweep_idx = 2 # use 3rd value
+def quality_control(baseline_data, sampling_data):
+    baseline_dirac = baseline_data[sweep_idx]
+    sampling_dirac = sampling_data[sweep_idx]
+    # TODO add hyperbolic, parabolic, and linear approximations and score calculation
+    return True
+
 
 # ================================================================================
 # MAIN
@@ -1524,6 +1535,8 @@ threshold = 80 # mV
 def main():
     global running_flashing_LED
     global running # used for deciding if data collection thread should stop
+    global data # used for recording data for data collection, modeled as [[V,I]]
+    global Dirac # used for recording dirac voltages
 
     while True:
         try:
@@ -1540,6 +1553,8 @@ def main():
             thr.join(1) # wait up to 1 second for thread to wrap up
             if not completed:
                 raise Exception("Baseline did not complete execution")
+            baseline_data = data
+            baseline_diracs = Dirac
             thr = start_LED_thread(states["BASELINE_COMPLETE"])
             wait_for_button(GPIO_CHAN_NUM_BUTTON2)
 
@@ -1552,12 +1567,13 @@ def main():
             thr.join(1) # wait up to 1 second for thread to wrap up
             if not completed:
                 raise Exception("Sampling did not complete execution")
+            sampling_data = data
+            sampling_diracs = Dirac
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
 
             ##### QC #####
-            my_random_number = int(time.time() / 100000)
-            print(f"my_random_number: {my_random_number}")
-            if my_random_number % 2 == 0: # quality control FAILED
+            print(f"Dirac voltages for baseline: {baseline_dirac}\nDirac voltages for sampling: {sampling_dirac}")
+            if not quality_control(baseline_data, sampling_data): # quality control FAILED
                 running_flashing_LED = True
                 thr = start_LED_thread(states["BAD_QC"])
                 wait_for_button(GPIO_CHAN_NUM_BUTTON1)
@@ -1565,8 +1581,8 @@ def main():
                 thr.join(1)
             else:
                 ##### RESULTS #####
-                abs_dirac_voltage = abs((time.time() % 1) * 160)
-                print(f"random dirac voltage: {abs_dirac_voltage}")
+                abs_dirac_voltages = [abs(baseline_dirac[i] - sampling_dirac[i]) for i in range(min(len(baseline_dirac), len(sampling_dirac)))]
+                print(f"Absolute dirac voltage deltas: {abs_dirac_voltages}")
                 if abs_dirac_voltage < threshold - buffer:
                     thr = start_LED_thread(states["RESULT_NEGATIVE"])
                 elif abs_dirac_voltage > threshold + buffer:
