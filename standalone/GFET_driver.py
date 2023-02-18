@@ -1399,10 +1399,9 @@ class LED_thread(threading.Thread):
             self.turn_off_all_leds()
             self.turn_on_leds(LED_set)
 
-sweep_idx = 2 # use 3rd value
-def quality_control(baseline_data, sampling_data):
-    baseline_dirac = baseline_data[sweep_idx]
-    sampling_dirac = sampling_data[sweep_idx]
+def quality_control(baseline_data, sampling_data, sweep_num):
+    baseline_dirac = baseline_data[sweep_num]
+    sampling_dirac = sampling_data[sweep_num]
     # TODO add hyperbolic, parabolic, and linear approximations and score calculation
     return True
 
@@ -1530,6 +1529,7 @@ def start_data_collection(mode):
     thr.start()
     thr.join(sampling_wait_time) # this is a blocking call
 
+sweep_num = 2 # using 3rd sweep
 buffer = 10 # mV
 threshold = 80 # mV
 def main():
@@ -1573,7 +1573,7 @@ def main():
 
             ##### QC #####
             print(f"Dirac voltages for baseline: {baseline_dirac}\nDirac voltages for sampling: {sampling_dirac}")
-            if not quality_control(baseline_data, sampling_data): # quality control FAILED
+            if not quality_control(baseline_data, sampling_data, sweep_num): # quality control FAILED
                 running_flashing_LED = True
                 thr = start_LED_thread(states["BAD_QC"])
                 wait_for_button(GPIO_CHAN_NUM_BUTTON1)
@@ -1582,6 +1582,7 @@ def main():
             else:
                 ##### RESULTS #####
                 abs_dirac_voltages = [abs(baseline_dirac[i] - sampling_dirac[i]) for i in range(min(len(baseline_dirac), len(sampling_dirac)))]
+                abs_dirac_voltage = abs_dirac_voltages[sweep_num]
                 print(f"Absolute dirac voltage deltas: {abs_dirac_voltages}")
                 if abs_dirac_voltage < threshold - buffer:
                     thr = start_LED_thread(states["RESULT_NEGATIVE"])
