@@ -1031,8 +1031,7 @@ class sampling_thread (threading.Thread):
             _d_time[index_t] = time_sample2_end - time_sample1_end
 
             index_t += 1
-			print(f"Current index: {index_t}\nCurrent time: {time.time()")
-
+            print(f"Current index: {index_t}\nCurrent time: {time.time()}")
         t_end = time.time()
 
         # =============================================================================
@@ -1523,7 +1522,7 @@ def start_LED_thread(obj):
     thr.start()
     return thr
 
-sampling_wait_time = 180 # wait at most 3 minutes for data collection to complete
+sampling_wait_time = 1800 # wait at most 3 minutes for data collection to complete
 def start_data_collection(mode):
     thr = sampling_thread(mode)
     thr.start()
