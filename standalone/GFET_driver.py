@@ -980,6 +980,7 @@ class sampling_thread (threading.Thread):
         # START SAMPLING LOOP
         print("Start sampling loop")
         while (((t_start+SEC) > time.time()) or (index_t < SEC*ADC_SAMPLING_RATE)):  # Sample for x secs
+            print(f"Current index: {index_t}\nCurrent time: {time.time()}")
 
             #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
             if not running:
@@ -988,7 +989,7 @@ class sampling_thread (threading.Thread):
             # WAIT TILL YOU ARE READY TO TAKE NEXT SAMPLE
             while (time.time() - last_conv_time < (1.0/ADC_SAMPLING_RATE)):
                 m = 1
-
+            print("\tTaking next sample")
             _fs_time[index_t] = time.time() - last_conv_time
             last_conv_time = time.time()
 
@@ -999,6 +1000,7 @@ class sampling_thread (threading.Thread):
 
             while wait_for_data() == True:
                 m = 1
+            print("\tWait for data 1 completed")
             time_sample1_end = time.time()  # END CONV
             _adc_A[index_t] = read_adc_d_24()
 
@@ -1006,6 +1008,7 @@ class sampling_thread (threading.Thread):
             start_conversion()
             while wait_for_data() == True:
                 m = 1
+            print("\tWait for data 2 completed")
             time_sample2_end = time.time()  # END CONV
             _adc_B[index_t] = read_adc_d_24()
 
@@ -1031,7 +1034,6 @@ class sampling_thread (threading.Thread):
             _d_time[index_t] = time_sample2_end - time_sample1_end
 
             index_t += 1
-            print(f"Current index: {index_t}\nCurrent time: {time.time()}")
         t_end = time.time()
 
         # =============================================================================
@@ -1524,6 +1526,8 @@ def start_LED_thread(obj):
 
 sampling_wait_time = 1800 # wait at most 3 minutes for data collection to complete
 def start_data_collection(mode):
+    global running # used for deciding if data collection thread should stop
+    running = True
     thr = sampling_thread(mode)
     thr.start()
     thr.join(sampling_wait_time) # this is a blocking call
@@ -1533,7 +1537,6 @@ buffer = 10 # mV
 threshold = 80 # mV
 def main():
     global running_flashing_LED
-    global running # used for deciding if data collection thread should stop
     global data # used for recording data for data collection, modeled as [[V,I]]
     global Dirac # used for recording dirac voltages
 
