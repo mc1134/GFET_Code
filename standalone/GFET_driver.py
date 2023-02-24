@@ -114,6 +114,7 @@ running = True
 ready_for_sample = False
 mean_dirac_forward_sweep = 0
 mean_dirac_reverse_sweep = 0
+completed = True
 
 
 # =================================================================================
@@ -158,7 +159,10 @@ GPIO_CHAN_NUM_BUTTON2 = "72"
 GPIO_CHAN_NUM_BUTTON1 = "106"
 # When the lights are on the top of the device, in descending order the buttons
 # have IDs 106, 72, 48, hence why old button3 is now button1
-
+# STRUCTURE OF THE OUTPUT FILE - IF CHANGED: CHANGE THE WRITE_TO_FILE ORDER AS WELL
+raw_data_file_header = ['Time', 'd_time', 's_time', 'fs_time', 'Gate Voltage', 'Ids',
+                        'raw_adc_binary_ch1', 'raw_adc_binary_ch2', 'raw_adc_voltage_ch1', 'raw_adc_voltage_ch2', 'Slope', 'Peak']
+dirac_voltage_summary_file_header = ['Dirac Voltages', 'Sweep Type', 'Result']
 
 # =================================================================================
 # Enable SPI: /dev/spidev<bus>.<device>
@@ -684,7 +688,7 @@ def read_adc_d_24():
 
 
 def wait_for_data():
-
+#    return False
     reply = spi.xfer2(msg_wait_for_data)
 
     if (reply[0] & 0b00000100) >> 2 == 1:
@@ -1098,6 +1102,10 @@ class sampling_thread (threading.Thread):
                     _peak[i] = 0
             else:
                 _peak[i] = 0
+        with open('voltage_data.csv','w') as f:
+            csv_writer = csv.writer(f,delimiter=',')
+            for i in range(len(_voltage_A)):
+                csv_writer.writerow([i+1,_voltage_A[i],_voltage_B[i]])
 
         for i in range(index_t):  # _peak:
 
@@ -1475,6 +1483,10 @@ TIA_GAIN_2 = data["ADC_CALIB"][0]["TIA_GAIN_2"]
 TIA_GAIN_3 = data["ADC_CALIB"][0]["TIA_GAIN_3"]
 TIA_GAIN_4 = data["ADC_CALIB"][0]["TIA_GAIN_4"]
 
+# Write ADC config
+write_init_config()
+read_config(True)
+
 ##### STATES #####
 states = {
     "IDLE": {
@@ -1539,6 +1551,7 @@ def main():
     global running_flashing_LED
     global data # used for recording data for data collection, modeled as [[V,I]]
     global Dirac # used for recording dirac voltages
+    global completed
 
     while True:
         try:
