@@ -28,7 +28,8 @@ from queue import Queue
 import re #Regression search
 import json
 from os import path
-import socket    
+import socket
+import traceback
 
 USE_FAKE_DATA = False # For generating fake Gate Voltages / Ids for testing without sensor
 
@@ -1847,6 +1848,7 @@ def main():
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
 
             ##### QC #####
+            print(f"Baseline data: {str(baseline_data)[:100]}...\nSampling data: {str(sampling_data)[:100]}...")
             print(f"Dirac voltages for baseline: {baseline_diracs}\nDirac voltages for sampling: {sampling_diracs}")
             if not quality_control(baseline_data, sampling_data, sweep_num): # quality control FAILED
                 running_flashing_LED = True
@@ -1857,8 +1859,8 @@ def main():
             else:
                 ##### RESULTS #####
                 abs_dirac_voltages = [abs(baseline_diracs[i] - sampling_diracs[i]) for i in range(min(len(baseline_diracs), len(sampling_diracs)))]
-                abs_dirac_voltage = abs_dirac_voltages[sweep_num]
                 print(f"Absolute dirac voltage deltas: {abs_dirac_voltages}")
+                abs_dirac_voltage = abs_dirac_voltages[sweep_num]
                 if abs_dirac_voltage < threshold - buffer:
                     thr = start_LED_thread(states["RESULT_NEGATIVE"])
                 elif abs_dirac_voltage > threshold + buffer:
@@ -1867,8 +1869,10 @@ def main():
                     thr = start_LED_thread(states["RESULT_INCONCLUSIVE"])
                 wait_for_button(GPIO_CHAN_NUM_BUTTON1)
         except Exception as e:
-            print("Something went wrong. Exception details:")
+            print("Something went wrong. Exception summary:")
             print(e)
+            print("Exception details:")
+            print(traceback.format_exc())
             running_flashing_LED = True
             thr = start_LED_thread(states["ERROR"])
             wait_for_button(GPIO_CHAN_NUM_BUTTON1)
