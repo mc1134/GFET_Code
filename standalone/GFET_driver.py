@@ -1408,11 +1408,271 @@ class LED_thread(threading.Thread):
             self.turn_off_all_leds()
             self.turn_on_leds(LED_set)
 
+
+# helper function for logging timestamps
+def get_time():
+    return time.strftime("%Y-%m-%dT%H-%M-%SZ%z")
+
 def quality_control(baseline_data, sampling_data, sweep_num):
-    baseline_dirac = baseline_data[sweep_num]
-    sampling_dirac = sampling_data[sweep_num]
-    # TODO add hyperbolic, parabolic, and linear approximations and score calculation
-    return True
+    bx = [obj[0] for obj in baseline_data[sweep_num]] # voltages
+    by = [obj[1] for obj in baseline_data[sweep_num]] # ids
+    bxn = [item / max(bx) for item in bx] # normalized x
+    byn = [item / max(by) for item in by] # normalized y
+    sx = [obj[0] for obj in sampling_data[sweep_num]]
+    sy = [obj[1] for obj in sampling_data[sweep_num]]
+    sxn = [item / max(sx) for item in sx]
+    syn = [item / max(sy) for item in sy]
+
+    # check curve data
+    check_curve_data = []
+    if len(bxn) != len(byn):
+        check_curve_data += [f"Baseline data lists do not have same number of elements: len(bxn) is {len(bxn)}; len(byn) is {len(byn)}."]
+    if len(sxn) != len(syn):
+        check_curve_data += [f"Sampling data lists do not have same number of elements: len(sxn) is {len(sxn)}; len(syn) is {len(syn)}."]
+    if not all([type(item) is float for item in bxn + byn + sxn + syn]):
+        check_curve_data += [f"Data lists must be entirely numeric."]
+    if len(check_curve_data) > 0:
+        print("Curve data is not proper.\n" + "\n".join(check_curve_data))
+        return
+
+    # Parabolic fits
+    B0p = [1, 1, 1] # initial search point for fminsearch
+    parabolic_fit_baseline = scipy.optimize.fmin(func = par_residuals, x0 = B0p, args = (bxn, byn))
+    parabolic_fit_sampling = scipy.optimize.fmin(func = par_residuals, x0 = B0p, args = (sxn, syn))
+
+    # Hyperbolic fits
+    start_point = [0.890903252535798, 0.959291425205444, 0.547215529963803, 0.138624442828679]
+    hyperbolic_fit_baseline = scipy.optimize.least_squares(hyp_residuals, x0 = start_point, args = (bxn, byn)) # does not return goodness of fit data
+    hyperbolic_fit_sampling = scipy.optimize.least_squares(hyp_residuals, x0 = start_point, args = (sxn, syn))
+
+    # Moving average filter and noise tests calculate max difference and average
+    fil = movmean(byn, 3)
+    bmaxn = max([abs(fil[i]-byn[i]) for i in range(len(byn))])
+    bavgn = np.mean([abs(fil[i]-byn[i]) for i in range(len(byn))])
+    fil = movmean(syn, 3)
+    smaxn = max([abs(fil[i]-syn[i]) for i in range(len(syn))])
+    savgn = np.mean([abs(fil[i]-syn[i]) for i in range(len(syn))])
+
+    # Linear fit: split at minima and calculate slope on either side
+    val = min(byn)
+    xmin = min(max(byn.index(val), 2), len(byn) - 2)
+    minx = bxn[xmin]
+    bl = np.polynomial.polynomial.polyfit(bxn[:xmin], byn[:xmin], 1) # returns numpy.nd_array([c_1, c_2]) for y = c_1 * x + c_2
+    br = np.polynomial.polynomial.polyfit(bxn[xmin:], byn[xmin:], 1)
+    val = min(syn)
+    xmin = min(max(syn.index(val), 2), len(syn) - 2)
+    minx = sxn[xmin]
+    sl = np.polynomial.polynomial.polyfit(sxn[:xmin], syn[:xmin], 1)
+    sr = np.polynomial.polynomial.polyfit(sxn[xmin:], syn[xmin:], 1)
+
+    score_baseline, message_baseline = score(hyperbolic_fit_baseline.x, parabolic_fit_baseline, {"maxn": bmaxn, "avgn": bavgn}, {"lsl": bl[1], "rsl": br[1]})
+    score_sampling, message_sampling = score(hyperbolic_fit_sampling.x, parabolic_fit_sampling, {"maxn": smaxn, "avgn": savgn}, {"lsl": sl[1], "rsl": sr[1]})
+
+    output_qc_parameters = {
+        "data used": self.fx_filename,
+        "hyperbolic fit": {
+            "baseline params": {
+                "a": hyperbolic_fit_baseline.x[0],
+                "b": hyperbolic_fit_baseline.x[1],
+                "c": hyperbolic_fit_baseline.x[2],
+                "h": hyperbolic_fit_baseline.x[3]
+            },
+            "sampling params": {
+                "a": hyperbolic_fit_sampling.x[0],
+                "b": hyperbolic_fit_sampling.x[1],
+                "c": hyperbolic_fit_sampling.x[2],
+                "h": hyperbolic_fit_sampling.x[3]
+            },
+            "model": "(b**2 * ((x - h)**2 / (a**2) + 1))**0.5 + c"
+        },
+        "parabolic fit": {
+            "baseline params": {
+                "a": parabolic_fit_baseline[0],
+                "b": parabolic_fit_baseline[1],
+                "c": parabolic_fit_baseline[2]
+            },
+            "sampling params": {
+                "a": parabolic_fit_sampling[0],
+                "b": parabolic_fit_sampling[1],
+                "c": parabolic_fit_sampling[2]
+            },
+            "model": "(((x - a)**2/4) * c) + b"
+        },
+        "linear fit": {
+            "baseline params": {
+                "left fit": {
+                    "b": bl[0],
+                    "m": bl[1]
+                },
+                "right fit": {
+                    "b": br[0],
+                    "m": br[1]
+                }
+            },
+            "sampling params": {
+                "left fit": {
+                    "b": sl[0],
+                    "m": sl[1]
+                },
+                "right fit": {
+                    "b": sr[0],
+                    "m": sr[1]
+                }
+            },
+            "model": "m * x + b"
+        },
+        "moving average filter fits": {
+            "baseline params": {
+                "moving mean maximum": bmaxn,
+                "moving mean average": bavgn
+            },
+            "sampling params": {
+                "moving mean maximum": smaxn,
+                "moving mean average": savgn
+            }
+        },
+        "scores": {
+            "baseline score": score_baseline,
+            "baseline message": message_baseline,
+            "sampling score": score_sampling,
+            "sampling message": message_sampling
+        }
+    }
+    output_qc_file = f"qc_params_{get_time()}.json"
+    with open(output_qc_file, "w") as f:
+        f.write(json.dumps(output_qc_parameters, indent = 4))
+
+def movmean(A, k): 
+    """ 
+    https://www.mathworks.com/help/matlab/ref/movmean.html
+    Specific implementation
+    M = movmean(A,k) returns an array of local k-point mean values, where each
+    mean is calculated over a sliding window of length k across neighboring
+    elements of A. When k is odd, the window is centered about the element in
+    the current position. When k is even, the window is centered about the
+    current and previous elements. The window size is automatically truncated
+    at the endpoints when there are not enough elements to fill the window.
+    When the window is truncated, the average is taken over only the elements
+    that fill the window. M is the same size as A.
+        - If A is a vector, then movmean operates along the length of the
+        vector A.
+    This subroutine does not check if the input is a valid list of numbers.
+    It is up to the caller to ensure the data is of the correct format.
+    """
+    ret = []
+    matrix_mode = False
+    if len(A) == 0:
+        return []
+    for col in range(len(A)):
+        sublist = A[max(0,col-k//2):col+k//2+k%2]
+        ret += [sum(sublist)/len(sublist)]
+    return ret
+
+##### helper fitting functions #####
+def par_model(fun_params, x): # this will evaluate the parabolic fit function
+    a, b, c = fun_params[0], fun_params[1], fun_params[2]
+    return (((x - a)**2 / 4) * c) + b 
+
+def par_residuals(fun_params, xn, yn): # this evaluate the normalized residuals of the par_model function
+    return np.linalg.norm(yn - par_model(fun_params, xn))
+
+def hyp_model(fun_params, x): # this will evaluate the hyperbolic fit function
+    a, b, c, h = fun_params[0], fun_params[1], fun_params[2], fun_params[3]
+    return np.sqrt(b**2 * ((x - h)**2 / (a**2) + 1)) + c 
+
+def hyp_residuals(fun_params, xn, yn): # this will evaluate the residuals of the hyp_model function
+    return yn - hyp_model(fun_params, xn) 
+
+def lin_model(fun_params, x): # this will evaluate the linear fit function
+    b, m = fun_params[0], fun_params[1]
+    return [m * item for item in x] + b # cannot multiple float by list of floats
+
+def sweepmean(s): # needs testing
+    """s assumed to have the following structure:
+    [
+        [
+            [gate_voltages_1, ids_1],
+            ['-0.1234', '6.78e-05'],
+            ...
+        ],
+        [
+            [gate_voltages_2, ids_2],
+            ['0.2468', '-1.3579e-02'],
+            ...
+        ],
+        ...
+    ]
+    note that this is the same as "fx" from the splitz_new_opt function
+    """
+    jmin = []
+    for row in s: # each iteration finds the smallest ID, then adds the corresponding voltage to jmin
+        IDs = [item[1] for item in row]
+        voltages = [item[0] for item in row]
+        min_id = min(IDs)
+        min_voltage = voltages[IDs.index(min_id)]
+        jmin += [min_voltage]
+    mina = np.mean(jmin)
+    mins = np.std(jmin)
+    return mina, mins, jmin  # call this function with fx/bx, then display/save the mina and mins somewhere
+
+def score(hyperbolic_fit, parabolic_fit, moving_mean_fit, linear_fit):
+    print(hyperbolic_fit)
+    print(parabolic_fit)
+    print(moving_mean_fit)
+    print(linear_fit)
+    # score criteria based on weights of each parameter and cutoff
+    scorelimit = 1
+
+    # weights of each parameter
+    sco = 0
+    pw = .5
+    hw = 2
+    nw = .5
+    sw = 3
+
+    # return variable
+    msg = ""
+
+    if parabolic_fit[0] < 0:
+        sco += pw
+        msg += 'Parabola b: fail\n'
+    if parabolic_fit[1] > 1:
+        sco += pw
+        msg += 'Parabola c: fail\n'
+    if parabolic_fit[2] < 0:
+        sco += pw
+        msg += 'Parabola p: fail\n'
+    # parabolic_fit is a numpy.ndarray([a, b, c, h])
+    if hyperbolic_fit[0] < -0.5 or hyperbolic_fit[0] > 0.5:
+        sco += hw
+        msg += 'Hyperbolic a: fail\n'
+    if hyperbolic_fit[1] < -0.5 or hyperbolic_fit[1] > 1:
+        sco += hw
+        msg += 'Hyperbolic b: fail\n'
+    if hyperbolic_fit[2] < -1 or hyperbolic_fit[2] > 1:
+        sco += hw
+        msg += 'Hyperbolic c: fail\n'
+    if hyperbolic_fit[3] < 0 or hyperbolic_fit[3] > 1:
+        sco += hw
+        msg += 'Hyperbolic h: fail\n'
+    if moving_mean_fit["avgn"] < -0.0005 or moving_mean_fit["avgn"] > 0.005:
+        sco += nw
+        msg += 'Smooth avg: fail\n'
+    if moving_mean_fit["maxn"] > 0.1:
+        sco += nw
+        msg += 'Smooth max: fail\n'
+    if linear_fit["lsl"] > 0:
+        sco += sw
+        msg += 'Left slope: fail\n'
+    if linear_fit["rsl"] < 0:
+        sco += sw
+        msg += 'Right slope: fail\n'
+
+    if sco > scorelimit:
+        msg += 'This data set is bad'
+    else:
+        msg += 'This data set is good'
+    return sco, msg
 
 
 # ================================================================================
@@ -1587,7 +1847,7 @@ def main():
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
 
             ##### QC #####
-            print(f"Dirac voltages for baseline: {baseline_dirac}\nDirac voltages for sampling: {sampling_dirac}")
+            print(f"Dirac voltages for baseline: {baseline_diracs}\nDirac voltages for sampling: {sampling_diracs}")
             if not quality_control(baseline_data, sampling_data, sweep_num): # quality control FAILED
                 running_flashing_LED = True
                 thr = start_LED_thread(states["BAD_QC"])
@@ -1596,7 +1856,7 @@ def main():
                 thr.join(1)
             else:
                 ##### RESULTS #####
-                abs_dirac_voltages = [abs(baseline_dirac[i] - sampling_dirac[i]) for i in range(min(len(baseline_dirac), len(sampling_dirac)))]
+                abs_dirac_voltages = [abs(baseline_diracs[i] - sampling_diracs[i]) for i in range(min(len(baseline_diracs), len(sampling_diracs)))]
                 abs_dirac_voltage = abs_dirac_voltages[sweep_num]
                 print(f"Absolute dirac voltage deltas: {abs_dirac_voltages}")
                 if abs_dirac_voltage < threshold - buffer:
