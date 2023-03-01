@@ -1470,8 +1470,10 @@ def splitz_new_opt(data):
     return forw, back
 
 def quality_control(baseline_data, sampling_data, sweep_num):
+    print("qc: running splitz")
     baseline_fx, baseline_bx = splitz_new_opt(baseline_data)
     sampling_fx, sampling_bx = splitz_new_opt(sampling_data)
+    print("qc: transforming data")
     bx = [obj[0] for obj in baseline_fx[sweep_num]] # voltages
     by = [obj[1] for obj in baseline_fx[sweep_num]] # ids
     bxn = [item / max(bx) for item in bx] # normalized x
@@ -1480,7 +1482,7 @@ def quality_control(baseline_data, sampling_data, sweep_num):
     sy = [obj[1] for obj in sampling_fx[sweep_num]]
     sxn = [item / max(sx) for item in sx]
     syn = [item / max(sy) for item in sy]
-
+    print("qc: checking curve data")
     # check curve data
     check_curve_data = []
     if len(bxn) != len(byn):
@@ -1491,18 +1493,18 @@ def quality_control(baseline_data, sampling_data, sweep_num):
         check_curve_data += [f"Data lists must be entirely numeric."]
     if len(check_curve_data) > 0:
         print("Curve data is not proper.\n" + "\n".join(check_curve_data))
-        return
-
+        return False
+    print("qc: running parabolic fits")
     # Parabolic fits
     B0p = [1, 1, 1] # initial search point for fminsearch
     parabolic_fit_baseline = scipy.optimize.fmin(func = par_residuals, x0 = B0p, args = (bxn, byn))
     parabolic_fit_sampling = scipy.optimize.fmin(func = par_residuals, x0 = B0p, args = (sxn, syn))
-
+    print("qc: running hyperbolic fits")
     # Hyperbolic fits
     start_point = [0.890903252535798, 0.959291425205444, 0.547215529963803, 0.138624442828679]
     hyperbolic_fit_baseline = scipy.optimize.least_squares(hyp_residuals, x0 = start_point, args = (bxn, byn)) # does not return goodness of fit data
     hyperbolic_fit_sampling = scipy.optimize.least_squares(hyp_residuals, x0 = start_point, args = (sxn, syn))
-
+    print("qc: moving mean fits")
     # Moving average filter and noise tests calculate max difference and average
     fil = movmean(byn, 3)
     bmaxn = max([abs(fil[i]-byn[i]) for i in range(len(byn))])
@@ -1510,7 +1512,7 @@ def quality_control(baseline_data, sampling_data, sweep_num):
     fil = movmean(syn, 3)
     smaxn = max([abs(fil[i]-syn[i]) for i in range(len(syn))])
     savgn = np.mean([abs(fil[i]-syn[i]) for i in range(len(syn))])
-
+    print("qc: linear fits")
     # Linear fit: split at minima and calculate slope on either side
     val = min(byn)
     xmin = min(max(byn.index(val), 2), len(byn) - 2)
@@ -1522,10 +1524,10 @@ def quality_control(baseline_data, sampling_data, sweep_num):
     minx = sxn[xmin]
     sl = np.polynomial.polynomial.polyfit(sxn[:xmin], syn[:xmin], 1)
     sr = np.polynomial.polynomial.polyfit(sxn[xmin:], syn[xmin:], 1)
-
+    print("qc: scoring")
     score_baseline, message_baseline = score(hyperbolic_fit_baseline.x, parabolic_fit_baseline, {"maxn": bmaxn, "avgn": bavgn}, {"lsl": bl[1], "rsl": br[1]})
     score_sampling, message_sampling = score(hyperbolic_fit_sampling.x, parabolic_fit_sampling, {"maxn": smaxn, "avgn": savgn}, {"lsl": sl[1], "rsl": sr[1]})
-
+    print("qc: writing file")
     output_qc_parameters = {
         "data used": self.fx_filename,
         "hyperbolic fit": {
@@ -1599,6 +1601,7 @@ def quality_control(baseline_data, sampling_data, sweep_num):
     output_qc_file = f"qc_params_{get_time()}.json"
     with open(output_qc_file, "w") as f:
         f.write(json.dumps(output_qc_parameters, indent = 4))
+    return True
 
 def movmean(A, k): 
     """ 
