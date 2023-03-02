@@ -982,6 +982,7 @@ class sampling_thread (threading.Thread):
         global mean_dirac_reverse_sweep
         global data
         global Dirac
+        global chngpts
 
         # START SAMPLING LOOP
         print("Start sampling loop")
@@ -1189,8 +1190,9 @@ class sampling_thread (threading.Thread):
                 sweep_type.pop(i-c)
                 c += 1
 
-        # print("start", start)
-        # print("end", end)
+        print("start", start)
+        print("end", end)
+        chngpts = start
 
         # =============================================================================
         # POST PROCESSING : FITTING CURVE TO DATA
@@ -1415,7 +1417,7 @@ class LED_thread(threading.Thread):
 def get_time():
     return time.strftime("%Y-%m-%dT%H-%M-%SZ%z")
 
-def splitz_new_opt(data):
+def splitz_new_opt(data, pts):
     """data assumed to possess the following structure:
     [
         ['Gate Voltage', 'Ids'],
@@ -1450,7 +1452,8 @@ def splitz_new_opt(data):
     numsweep = 793 # Number of datapoints per sweep
     swns = int(len(dv)/numsweep) # Number of sweeps roughly
 
-    pts = rpt.Binseg(model = "l2").fit(dv).predict(n_bkps = swns) # find change points. this takes a very long time (5 minutes for 700 data points?)
+    #pts = rpt.Binseg(model = "l2").fit(dv).predict(n_bkps = swns) # find change points. this takes a very long time (5 minutes for 700 data points?)
+    print(f"splitz: pts = {pts}")
 
     # Splitting the forward and backward into two separate arrays
     sam = np.mean(dv[pts[1]:pts[2]])
@@ -1469,10 +1472,10 @@ def splitz_new_opt(data):
 
     return forw, back
 
-def quality_control(baseline_data, sampling_data, sweep_num):
+def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chngpts, sweep_num):
     print("qc: running splitz")
-    baseline_fx, baseline_bx = splitz_new_opt(baseline_data)
-    sampling_fx, sampling_bx = splitz_new_opt(sampling_data)
+    baseline_fx, baseline_bx = splitz_new_opt(baseline_data, baseline_chngpts)
+    sampling_fx, sampling_bx = splitz_new_opt(sampling_data, sampling_chngpts)
     print("qc: transforming data")
     bx = [obj[0] for obj in baseline_fx[sweep_num]] # voltages
     by = [obj[1] for obj in baseline_fx[sweep_num]] # ids
@@ -1648,7 +1651,7 @@ def lin_model(fun_params, x): # this will evaluate the linear fit function
     b, m = fun_params[0], fun_params[1]
     return [m * item for item in x] + b # cannot multiple float by list of floats
 
-def sweepmean(s): # needs testing
+def sweepmean(s):
     """s assumed to have the following structure:
     [
         [
@@ -1872,7 +1875,10 @@ def main():
     global running_flashing_LED
     global data # used for recording data for data collection, modeled as [[V,I]]
     global Dirac # used for recording dirac voltages
+    global chngpts # used for recording change points for use in splitz function. these should be 20000/793 ~ 25 index locations
     global completed
+
+    chngpts = None
 
     while True:
         try:
@@ -1891,6 +1897,8 @@ def main():
                 raise Exception("Baseline did not complete execution")
             baseline_data = data
             baseline_diracs = Dirac
+            baseline_chngpts = chngpts
+            chngpts = None
             thr = start_LED_thread(states["BASELINE_COMPLETE"])
             wait_for_button(GPIO_CHAN_NUM_BUTTON2)
 
@@ -1905,12 +1913,14 @@ def main():
                 raise Exception("Sampling did not complete execution")
             sampling_data = data
             sampling_diracs = Dirac
+            sampling_chngpts = chngpts
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
 
             ##### QC #####
             print(f"Baseline data: {str(baseline_data)[:100]}...\nSampling data: {str(sampling_data)[:100]}...")
             print(f"Dirac voltages for baseline: {baseline_diracs}\nDirac voltages for sampling: {sampling_diracs}")
-            if not quality_control(baseline_data, sampling_data, sweep_num): # quality control FAILED
+            print(f"Baseline change points: {baseline_chngpts}\nSampling change points: {sampling_chngpts}")
+            if not quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chngpts, sweep_num): # quality control FAILED
                 running_flashing_LED = True
                 thr = start_LED_thread(states["BAD_QC"])
                 wait_for_button(GPIO_CHAN_NUM_BUTTON1)
