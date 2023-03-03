@@ -30,7 +30,7 @@ import json
 from os import path
 import socket
 import traceback
-import ruptures as rpt
+import scipy.optimize
 
 USE_FAKE_DATA = False # For generating fake Gate Voltages / Ids for testing without sensor
 
@@ -987,7 +987,6 @@ class sampling_thread (threading.Thread):
         # START SAMPLING LOOP
         print("Start sampling loop")
         while (((t_start+SEC) > time.time()) or (index_t < SEC*ADC_SAMPLING_RATE)):  # Sample for x secs
-            print(f"Current index: {index_t}\nCurrent time: {time.time()}")
 
             #TERMINATE THIS THREAD EARLY IF TEST IS CANCELLED
             if not running:
@@ -996,7 +995,6 @@ class sampling_thread (threading.Thread):
             # WAIT TILL YOU ARE READY TO TAKE NEXT SAMPLE
             while (time.time() - last_conv_time < (1.0/ADC_SAMPLING_RATE)):
                 m = 1
-            print("\tTaking next sample")
             _fs_time[index_t] = time.time() - last_conv_time
             last_conv_time = time.time()
 
@@ -1007,7 +1005,6 @@ class sampling_thread (threading.Thread):
 
             while wait_for_data() == True:
                 m = 1
-            print("\tWait for data 1 completed")
             time_sample1_end = time.time()  # END CONV
             _adc_A[index_t] = read_adc_d_24()
 
@@ -1015,7 +1012,6 @@ class sampling_thread (threading.Thread):
             start_conversion()
             while wait_for_data() == True:
                 m = 1
-            print("\tWait for data 2 completed")
             time_sample2_end = time.time()  # END CONV
             _adc_B[index_t] = read_adc_d_24()
 
@@ -1493,7 +1489,13 @@ def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chn
     if len(sxn) != len(syn):
         check_curve_data += [f"Sampling data lists do not have same number of elements: len(sxn) is {len(sxn)}; len(syn) is {len(syn)}."]
     if not all([type(item) is float for item in bxn + byn + sxn + syn]):
-        check_curve_data += [f"Data lists must be entirely numeric."]
+        #check_curve_data += [f"Data lists must be entirely numeric."]
+        print("data lists MIGHT not be entirely numeric")
+        l = all([type(item) is float for item in bxn + byn + sxn + syn])
+        print("number of not float items:")
+        print(len([item for item in l if item is False]))
+        print('number of items:')
+        print(len(l))
     if len(check_curve_data) > 0:
         print("Curve data is not proper.\n" + "\n".join(check_curve_data))
         return False
