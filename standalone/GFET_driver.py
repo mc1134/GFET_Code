@@ -1491,7 +1491,7 @@ def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chn
     if not all([type(item) is float for item in bxn + byn + sxn + syn]):
         #check_curve_data += [f"Data lists must be entirely numeric."]
         print("data lists MIGHT not be entirely numeric")
-        l = all([type(item) is float for item in bxn + byn + sxn + syn])
+        l = [type(item) is float for item in bxn + byn + sxn + syn]
         print("number of not float items:")
         print(len([item for item in l if item is False]))
         print('number of items:')
