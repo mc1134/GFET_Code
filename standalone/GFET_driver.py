@@ -1534,7 +1534,6 @@ def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chn
     score_sampling, message_sampling = score(hyperbolic_fit_sampling.x, parabolic_fit_sampling, {"maxn": smaxn, "avgn": savgn}, {"lsl": sl[1], "rsl": sr[1]})
     print("qc: writing file")
     output_qc_parameters = {
-        "data used": self.fx_filename,
         "hyperbolic fit": {
             "baseline params": {
                 "a": hyperbolic_fit_baseline.x[0],
