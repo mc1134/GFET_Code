@@ -1468,7 +1468,7 @@ def splitz_new_opt(data, pts):
 
     return forw, back
 
-def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chngpts, sweep_num):
+def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chngpts, baseline_diracs, sampling_diracs, sweep_num):
     print("qc: running splitz")
     baseline_fx, baseline_bx = splitz_new_opt(baseline_data, baseline_chngpts)
     sampling_fx, sampling_bx = splitz_new_opt(sampling_data, sampling_chngpts)
@@ -1600,6 +1600,11 @@ def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chn
             "baseline message": message_baseline,
             "sampling score": score_sampling,
             "sampling message": message_sampling
+        },
+        "dirac voltages": {
+            "baseline diracs": baseline_diracs,
+            "sampling_diracs": sampling_diracs,
+            "absolute dirac difference": abs(np.mean(baseline_diracs)-np.mean(sampling_diracs))
         }
     }
     output_qc_file = f"qc_params_{get_time()}.json"
@@ -1921,7 +1926,8 @@ def main():
             print(f"Baseline data: {str(baseline_data)[:100]}...\nSampling data: {str(sampling_data)[:100]}...")
             print(f"Dirac voltages for baseline: {baseline_diracs}\nDirac voltages for sampling: {sampling_diracs}")
             print(f"Baseline change points: {baseline_chngpts}\nSampling change points: {sampling_chngpts}")
-            if not quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chngpts, sweep_num): # quality control FAILED
+            if not quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chngpts, baseline_diracs, sampling_diracs, sweep_num):
+                # quality control FAILED
                 running_flashing_LED = True
                 thr = start_LED_thread(states["BAD_QC"])
                 wait_for_button(GPIO_CHAN_NUM_BUTTON1)
@@ -1931,7 +1937,7 @@ def main():
                 ##### RESULTS #####
                 abs_dirac_voltages = [abs(baseline_diracs[i] - sampling_diracs[i]) for i in range(min(len(baseline_diracs), len(sampling_diracs)))]
                 print(f"Absolute dirac voltage deltas: {abs_dirac_voltages}")
-                abs_dirac_voltage = abs_dirac_voltages[sweep_num]
+                abs_dirac_voltage = np.mean(abs_dirac_voltages)
                 if abs_dirac_voltage < threshold - buffer:
                     thr = start_LED_thread(states["RESULT_NEGATIVE"])
                 elif abs_dirac_voltage > threshold + buffer:
