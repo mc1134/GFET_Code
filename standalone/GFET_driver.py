@@ -1937,7 +1937,9 @@ def main():
                 ##### RESULTS #####
                 abs_dirac_voltages = [abs(baseline_diracs[i] - sampling_diracs[i]) for i in range(min(len(baseline_diracs), len(sampling_diracs)))]
                 print(f"Absolute dirac voltage deltas: {abs_dirac_voltages}")
-                abs_dirac_voltage = np.mean(abs_dirac_voltages)
+                print(f"Average of differences: {np.mean(abs_dirac_voltages)}")
+                print(f"Difference of averages: {np.mean(baseline_diracs)-np.mean(sampling_diracs)}")
+                abs_dirac_voltage = abs(np.mean(baseline_diracs) - np.mean(sampling_diracs))
                 if abs_dirac_voltage < threshold - buffer:
                     thr = start_LED_thread(states["RESULT_NEGATIVE"])
                 elif abs_dirac_voltage > threshold + buffer:
