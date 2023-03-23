@@ -1327,7 +1327,7 @@ def update_sys_time():
     return 0
 
 
-##### Method for waiting for button press #####
+##### Methods for waiting for button presses #####
 BUTTON_PRESSED = "0"
 BUTTON_CHECK_DELAY = 0.5 # seconds
 def wait_for_button(button):
@@ -1336,6 +1336,22 @@ def wait_for_button(button):
             if valueFile.read(1) == BUTTON_PRESSED:
                 break
             time.sleep(BUTTON_CHECK_DELAY)
+
+def wait_for_buttons(buttonlist, mode = any):
+    # mode must be any or all (methods)
+    # unused
+    if type(buttonlist) is not list or len(buttonlist) == 0:
+        return
+    pressed = {}
+    while True:
+        pressed = {}
+        for button in buttonlist:
+            with open(f"{GPIO_PATH}/gpio{button}/value") as f:
+                pressed += {button: f.read(1) == BUTTON_PRESSED}
+        if mode(pressed.values()):
+            break
+        time.sleep(BUTTON_CHECK_DELAY)
+    return [button for button in pressed.keys() if pressed[button]]
 
 running_LED = False
 LED_flash_delay = 0.5 # seconds
@@ -1602,8 +1618,8 @@ def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chn
             "sampling message": message_sampling
         },
         "dirac voltages": {
-            "baseline diracs": baseline_diracs,
-            "sampling_diracs": sampling_diracs,
+            "baseline diracs": list(baseline_diracs),
+            "sampling_diracs": list(sampling_diracs),
             "absolute dirac difference": abs(np.mean(baseline_diracs)-np.mean(sampling_diracs))
         }
     }
@@ -1866,13 +1882,21 @@ def start_LED_thread(obj):
     thr.start()
     return thr
 
-sampling_wait_time = 1800 # wait at most 3 minutes for data collection to complete
+sampling_wait_time = 180 # wait at most 3 minutes for data collection to complete
 def start_data_collection(mode):
     global running # used for deciding if data collection thread should stop
     running = True
+    thr_start = time.time()
     thr = sampling_thread(mode)
     thr.start()
-    thr.join(sampling_wait_time) # this is a blocking call
+    #thr.join(sampling_wait_time) # this is a blocking call
+    while time.time() - thr_start < sampling_wait_time:
+        # b1 interrupt mechanism
+        with open(f"{GPIO_PATH}/gpio{GPIO_CHAN_NUM_BUTTON1}/value") as valueFile:
+            if valueFile.read(1) == BUTTON_PRESSED:
+                return "interrupt"
+            time.sleep(BUTTON_CHECK_DELAY)
+    return None
 
 sweep_num = 2 # using 3rd sweep
 buffer = 10 # mV
@@ -1896,7 +1920,8 @@ def main():
             running_flashing_LED = True
             thr = start_LED_thread(states["BASELINE_RUNNING"])
             completed = False
-            start_data_collection("BASELINE")
+            if start_data_collection("BASELINE") == "interrupt":
+                continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
             if not completed:
@@ -1906,13 +1931,16 @@ def main():
             baseline_chngpts = chngpts
             chngpts = None
             thr = start_LED_thread(states["BASELINE_COMPLETE"])
-            wait_for_button(GPIO_CHAN_NUM_BUTTON2)
+            buttons_pressed = wait_for_buttons([GPIO_CHAN_NUM_BUTTON1, GPIO_CHAN_NUM_BUTTON2], any)
+            if GPIO_CHAN_NUM_BUTTON1 in buttons_pressed:
+                continue
 
             ##### SAMPLING #####
             running_flashing_LED = True
             thr = start_LED_thread(states["SAMPLING_RUNNING"])
             completed = False
-            start_data_collection("SAMPLING")
+            if start_data_collection("SAMPLING") == "interrupt":
+                continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
             if not completed:
