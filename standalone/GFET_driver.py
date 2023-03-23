@@ -1924,6 +1924,7 @@ def main():
             completed = False
             if start_data_collection("BASELINE") == "interrupt":
                 thr.join(1)
+                running_flashing_LED = False
                 continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
@@ -1947,6 +1948,7 @@ def main():
             completed = False
             if start_data_collection("SAMPLING") == "interrupt":
                 thr.join(1)
+                running_flashing_LED = False
                 continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
