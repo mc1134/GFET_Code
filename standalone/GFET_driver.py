@@ -1347,7 +1347,7 @@ def wait_for_buttons(buttonlist, mode = any):
         pressed = {}
         for button in buttonlist:
             with open(f"{GPIO_PATH}/gpio{button}/value") as f:
-                pressed += {button: f.read(1) == BUTTON_PRESSED}
+                pressed[button] = f.read(1) == BUTTON_PRESSED
         if mode(pressed.values()):
             break
         time.sleep(BUTTON_CHECK_DELAY)
