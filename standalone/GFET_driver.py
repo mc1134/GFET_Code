@@ -1913,14 +1913,17 @@ def main():
     while True:
         try:
             ##### IDLE #####
+            print("Idle state. Press b2 to gather baseline.")
             thr = start_LED_thread(states["IDLE"]) # nonflashing LED threads are generally unused
             wait_for_button(GPIO_CHAN_NUM_BUTTON2)
 
             ##### BASELINE #####
+            print("Gathering baseline...")
             running_flashing_LED = True
             thr = start_LED_thread(states["BASELINE_RUNNING"])
             completed = False
             if start_data_collection("BASELINE") == "interrupt":
+                thr.join(1)
                 continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
@@ -1930,16 +1933,20 @@ def main():
             baseline_diracs = Dirac
             baseline_chngpts = chngpts
             chngpts = None
+            print("Baseline gathered. Press b2 to gather sample.")
             thr = start_LED_thread(states["BASELINE_COMPLETE"])
             buttons_pressed = wait_for_buttons([GPIO_CHAN_NUM_BUTTON1, GPIO_CHAN_NUM_BUTTON2], any)
             if GPIO_CHAN_NUM_BUTTON1 in buttons_pressed:
+                thr.join(1)
                 continue
 
             ##### SAMPLING #####
+            print("Gathering sample...")
             running_flashing_LED = True
             thr = start_LED_thread(states["SAMPLING_RUNNING"])
             completed = False
             if start_data_collection("SAMPLING") == "interrupt":
+                thr.join(1)
                 continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
@@ -1948,6 +1955,7 @@ def main():
             sampling_data = data
             sampling_diracs = Dirac
             sampling_chngpts = chngpts
+            print("Sample gathered. Processing quality control and dirac calculation...")
             thr = start_LED_thread(states["SAMPLING_COMPLETE"])
 
             ##### QC #####
