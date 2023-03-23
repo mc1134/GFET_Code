@@ -1890,10 +1890,11 @@ def start_data_collection(mode):
     thr = sampling_thread(mode)
     thr.start()
     #thr.join(sampling_wait_time) # this is a blocking call
-    while time.time() - thr_start < sampling_wait_time:
+    while time.time() - thr_start < sampling_wait_time and thr.is_alive():
         # b1 interrupt mechanism
         with open(f"{GPIO_PATH}/gpio{GPIO_CHAN_NUM_BUTTON1}/value") as valueFile:
             if valueFile.read(1) == BUTTON_PRESSED:
+                thr.join(1)
                 return "interrupt"
             time.sleep(BUTTON_CHECK_DELAY)
     return None
@@ -1923,8 +1924,8 @@ def main():
             thr = start_LED_thread(states["BASELINE_RUNNING"])
             completed = False
             if start_data_collection("BASELINE") == "interrupt":
-                thr.join(1)
                 running_flashing_LED = False
+                thr.join(1)
                 continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
@@ -1947,8 +1948,8 @@ def main():
             thr = start_LED_thread(states["SAMPLING_RUNNING"])
             completed = False
             if start_data_collection("SAMPLING") == "interrupt":
-                thr.join(1)
                 running_flashing_LED = False
+                thr.join(1)
                 continue
             running_flashing_LED = False
             thr.join(1) # wait up to 1 second for thread to wrap up
