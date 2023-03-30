@@ -29,11 +29,11 @@ class GUI:
         self.window_root.geometry("720x420")
 
         # configuring valid window grid positions
-        self.window_root.grid_rowconfigure(0)
-        self.window_root.grid_rowconfigure(1)
-        self.window_root.grid_rowconfigure(2)
-        self.window_root.grid_rowconfigure(3)
-        self.window_root.grid_columnconfigure(0)
+        self.window_root.grid_rowconfigure(0, weight = 1)
+        self.window_root.grid_rowconfigure(1, weight = 1)
+        self.window_root.grid_rowconfigure(2, weight = 1)
+        self.window_root.grid_rowconfigure(3, weight = 1)
+        self.window_root.grid_columnconfigure(0, weight = 1)
 
         # configuring textvariables for GUI
         self.feedback_str = tkinter.StringVar()
@@ -58,10 +58,10 @@ class GUI:
         self.frame_connect_buttons = tkinter.Frame(self.frame_connection) # frame for connect buttons
 
         # defining frame positioning
-        self.frame_connection.grid(row = 0, column = 0, sticky = "nw", padx = 10, pady = 10)
-        self.frame_data.grid(row = 1, column = 0, sticky = "nw", padx = 10, pady = 10)
-        self.frame_analytics.grid(row = 2, column = 0, sticky = "nw", padx = 10, pady = 10)
-        self.frame_feedback.grid(row = 3, column = 0, sticky = "nw", padx = 10, pady = 10)
+        self.frame_connection.grid(row = 0, column = 0, padx = 10, pady = 10) # add sticky="nw" for left justify
+        self.frame_data.grid(row = 1, column = 0, padx = 10, pady = 10)
+        self.frame_analytics.grid(row = 2, column = 0, padx = 10, pady = 10)
+        self.frame_feedback.grid(row = 3, column = 0, padx = 10, pady = 10)
 
         # help!
         ttk.Button(self.frame_connection, text = "Help", command = self.help_action, width = 20).grid(row = 0, column = 0, sticky = "w", padx = 4, pady = 4)
