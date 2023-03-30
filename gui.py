@@ -125,6 +125,10 @@ class GUI:
         self.baseline_dirac = None
         self.sampling_dirac = None
 
+        # plot variables
+        self.qc_plot_fignum = None
+        self.dirac_plot_fignum = None
+
         # variables for maintaining state of additional tkinter widgets
         self.popup_entry = None
 
@@ -162,6 +166,8 @@ class GUI:
 
     def plot_qc_approximations(self, xdata, ydata, hyperbolic_fit, parabolic_fit, linear_left, linear_right, mode="baseline"):
         helpers.print_debug(f"Plotting {mode} hyperbolic data and model")
+        if self.qc_plot_fignum is not None and plt.fignum_exists(self.qc_plot_fignum):
+            plt.close(self.qc_plot_fignum)
         fig, ax = plt.subplots(1, 3)
         fig.set_size_inches(16, 5)
         ax[0].plot(xdata, ydata, label=f"Data {mode}")
@@ -185,10 +191,13 @@ class GUI:
         ax[2].set_xlabel("Voltage (scaled w.r.t. max V)")
         ax[2].set_ylabel("Current (scaled w.r.t. max A)")
         ax[2].set_title(f"Linear quality control plot ({mode})")
+        self.qc_plot_fignum = fig.number
         plt.show()
 
     def plot_dirac_voltage(self, x_baseline, y_baseline, x_sampling, y_sampling, delta):
         helpers.print_debug("Plotting dirac voltage graph")
+        if self.dirac_plot_fignum is not None and plt.fignum_exists(self.dirac_plot_fignum):
+            plt.close(self.dirac_plot_fignum)
         fig, ax = plt.subplots(1, 1)
         ax.plot(x_baseline, y_baseline, label = "Baseline")
         ax.plot(x_sampling, y_sampling, label = "Sampling")
@@ -196,6 +205,7 @@ class GUI:
         ax.set_xlabel("Voltage (mV)")
         ax.set_ylabel("Current (μA)")
         ax.set_title(f"Dirac voltage comparison graph (|Δ|={delta})")
+        self.dirac_plot_fignum = fig.number
         plt.show()
 
     ##### File operations #####
@@ -364,7 +374,14 @@ class GUI:
             self.feedback_str.set(f"Could not open file {local_baseline_raw_data_file}")
             return
         self.baseline_fx = self.fx
-        mina, mins, jmin = helpers.sweepmean(self.fx)
+        # mina, mins, jmin = helpers.sweepmean(self.fx)
+        new_fx = []
+        for row in self.fx:
+            Vgates = matlab.movmean([item[0] for item in row], 3)
+            IDs = matlab.movmean([item[1] for item in row], 3)
+            new_fx += [[[Vgates[i], IDs[i]] for i in range(len(IDs))]]
+        print(str(new_fx)[:1000])
+        mina, mins, jmin = helpers.sweepmean(new_fx)
         self.baseline_dirac = {"mean": mina, "std": mins, "data": jmin}
         self.baseline_filename = local_baseline_raw_data_file
         self.modify_Text(self.baseline_file_textbox, self.baseline_filename)
@@ -380,7 +397,14 @@ class GUI:
             self.feedback_str.set(f"Could not open file {local_sampling_raw_data_file}")
             return
         self.sampling_fx = self.fx
-        mina, mins, jmin = helpers.sweepmean(self.fx)
+        # mina, mins, jmin = helpers.sweepmean(self.fx)
+        new_fx = []
+        for row in self.fx:
+            Vgates = matlab.movmean([item[0] for item in row], 3)
+            IDs = matlab.movmean([item[1] for item in row], 3)
+            new_fx += [[[Vgates[i], IDs[i]] for i in range(len(IDs))]]
+        print(str(new_fx)[:1000])
+        mina, mins, jmin = helpers.sweepmean(new_fx)
         self.sampling_dirac = {"mean": mina, "std": mins, "data": jmin}
         self.sampling_filename = local_sampling_raw_data_file
         self.modify_Text(self.sampling_file_textbox, self.sampling_filename)

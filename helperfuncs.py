@@ -110,14 +110,18 @@ def sweepmean(s): # needs testing
     note that this is the same as "fx" from the splitz_new_opt function
     """
     jmin = []
+    i = 0
     for row in s: # each iteration finds the smallest ID, then adds the corresponding voltage to jmin
         IDs = [item[1] for item in row]
         voltages = [item[0] for item in row]
         min_id = min(IDs)
         min_voltage = voltages[IDs.index(min_id)]
         jmin += [min_voltage]
+        print(f"sweepmean iteration {i}\n\tmin current: {1000000*min_id}uA at {IDs.index(min_id)}\n\tmin voltage: {1000*min_voltage}mV")
+        i += 1
     mina = np.mean(jmin)
     mins = np.std(jmin)
+    print(f"sweepmean average minimum voltage: {1000*mina}mV with stdev {1000*mins}mV")
     return mina, mins, jmin  # call this function with fx/bx, then display/save the mina and mins somewhere
 
 
