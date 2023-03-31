@@ -135,6 +135,12 @@ class GUI:
         # search for IP addresses
         # self.update_ip_addresses()
 
+        # destroy all plots if window is closed
+        def close_all_plots():
+            plt.close("all")
+            self.window_root.destroy()
+        self.window_root.protocol("WM_DELETE_WINDOW", close_all_plots)
+
         # start the window
         self.window_root.mainloop()
 
