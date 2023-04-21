@@ -1626,7 +1626,7 @@ def quality_control(baseline_data, sampling_data, baseline_chngpts, sampling_chn
     output_qc_file = f"qc_params_{get_time()}.json"
     with open(output_qc_file, "w") as f:
         f.write(json.dumps(output_qc_parameters, indent = 4))
-    return True
+    return "good" in message_baseline and "good" in message_sampling
 
 def movmean(A, k): 
     """ 
