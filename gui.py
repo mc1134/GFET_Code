@@ -42,6 +42,10 @@ class GUI:
         #self.IP.set("Querying IP addresses...")
         self.IP.set("10.0.0.0")
 
+        # Set the Device ID
+        self.device_id = tkinter.StringVar()
+        self.device_id.set("Device ID")
+
         # configuring text variables used by the Text widgets
         self.qc_score_str = "No Q/C Test run."
         self.abs_dirac_shift = "No dirac shift run."
@@ -73,6 +77,7 @@ class GUI:
         self.frame_connect_buttons.grid(row = 1, column = 2, sticky = "w", padx = 4, pady = 4)
         ttk.Button(self.frame_connect_buttons, text = "Connect", command = self.connect_action, width = 20).grid(row = 0, column = 0, sticky = "w", padx = 4, pady = 4)
         ttk.Button(self.frame_connect_buttons, text = "Disconnect", command = self.disconnect_action, width = 20).grid(row = 0, column = 1, sticky = "w", padx = 4, pady = 4)
+        ttk.Label(self.frame_connection, textvariable = self.device_id, width = 20).grid(row = 0, column = 1, sticky = "w", padx = 4, pady = 4) #display the device id from calib.json
 
         # file name entry
         ttk.Label(self.frame_connection, text = "File name", width = 20).grid(row = 2, column = 0, sticky = "w", padx = 4, pady = 4)
@@ -270,6 +275,13 @@ class GUI:
         if not self.ssh_client.upload_firmware(self.local_firmware, self.remote_firmware):
             print_stuff("Could not upload firmware.")
             return
+        print_stuff(f"Collecting the Device ID")
+        if not self.ssh_client.get_device_id():
+            print_stuff("Could not get device ID")
+            return
+        device_name = helpers.parse_device_id()
+        self.device_id.set(device_name)
+        print(f"Connected to device {device_name}")
         print_stuff("Connected to SSH device.")
 
     def disconnect_action(self):
@@ -289,6 +301,7 @@ class GUI:
         if not self.ssh_client.connected:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
+        device_name = self.device_id.get()# Gets the device ID
         if self.download_dir == CONSTANTS.DOWNLOAD_STR:
             self.feedback_str.set("No download directory selected. Please select one prior to running a baseline.")
             return
@@ -297,10 +310,10 @@ class GUI:
             self.feedback_str.set("Cannot run baseline using empty file name.")
             return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
-        local_baseline_raw_data_file = f"{self.download_dir}/{filename}_{mode}_RAW_DATA.csv"
+        local_baseline_raw_data_file = f"{self.download_dir}/{filename}_{device_name}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_baseline_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
-        remote_baseline_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
+        remote_baseline_raw_data_file = f"/home/root/{filename}_{device_name}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for baseline data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)
@@ -330,6 +343,7 @@ class GUI:
         if not self.ssh_client.connected:
             self.feedback_str.set('Device is not connected. Please press the "Connect" button.')
             return
+        device_name = self.device_id.get()# Gets the device ID
         if self.baseline_dirac is None:
             self.feedback_str.set("Please run a baseline first")
             return
@@ -341,10 +355,10 @@ class GUI:
             self.feedback_str.set("Cannot run sampling using empty file name.")
             return
         self.ssh_client.collect_data(self.remote_firmware, filename, mode)
-        local_sampling_raw_data_file = f"{self.download_dir}/{filename}_{mode}_RAW_DATA.csv"
+        local_sampling_raw_data_file = f"{self.download_dir}/{filename}_{device_name}_{mode}_RAW_DATA.csv"
         self.feedback_str.set(f"Using file {local_sampling_raw_data_file}")
         downloaded, time_elapsed, start_time = False, 0, time.time()
-        remote_sampling_raw_data_file = f"/home/root/{filename}_{mode}_RAW_DATA.csv"
+        remote_sampling_raw_data_file = f"/home/root/{filename}_{device_name}_{mode}_RAW_DATA.csv"
         while not downloaded and time_elapsed < CONSTANTS.MAX_DOWNLOAD_WAIT_TIME:
             helpers.print_debug(f"Waiting for sampling data file from device ({time_elapsed} seconds elapsed)...")
             time.sleep(CONSTANTS.DOWNLOAD_DELAY - (time.time() - start_time) % CONSTANTS.DOWNLOAD_DELAY)

@@ -1101,12 +1101,15 @@ class data_collection_thread (threading.Thread):
             return
 
         raw_data_filename = ""
+        with open("calib.json") as f:
+            dev_file = json.load(f) # Device specific id stored in calib.json file
+        device_name = dev_file["ADC_CALIB"][0]["DEVICE_ID"] # Writes device ID to file name
 
         if self.data_collection_mode == THREAD_DATA_COLLECTION_MODE_BASELINE: #BASELINE
-            raw_data_filename = self.filename_str + "_BASELINE_RAW_DATA.csv"
+            raw_data_filename = self.filename_str + "_" + device_name + "_BASELINE_RAW_DATA.csv"
 
         else: #SAMPLING
-            raw_data_filename = self.filename_str + "_SAMPLING_RAW_DATA.csv"
+            raw_data_filename = self.filename_str + "_" + device_name + "_SAMPLING_RAW_DATA.csv"
 
 
         # ===========================================================
@@ -1198,6 +1201,7 @@ else:
         "TIA_GAIN_2": -0.2656584491,
         "TIA_GAIN_3": 1.1644372463,
         "TIA_GAIN_4": -0.0359382272
+        "DEVICE_ID": "PX_NA"
     })
 
     with open(calib_filename, 'w') as outfile:

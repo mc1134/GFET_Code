@@ -1,4 +1,5 @@
 import paramiko
+import json
 
 class ssh_to_device:
     """
@@ -57,6 +58,20 @@ class ssh_to_device:
             return True
         except Exception as e:
             print("Could not upload firmware to device")
+            print(f"Reason: {e}")
+            return False
+
+    def get_device_id(self):# This is for collecting the calib.json from remote device to local
+        if not self.client:
+            print("Client is not connected. Need to connect first.")
+            return False
+        try:
+            ftp_client = self.client.open_sftp()
+            ftp_client.get('/home/root/calib.json','calib.json')
+            ftp_client.close()
+            return True
+        except Exception as e:
+            print(f"Could not obtain calib.json file")
             print(f"Reason: {e}")
             return False
 

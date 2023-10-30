@@ -1,5 +1,6 @@
 import time
 import numpy as np
+import json
 
 # helper function for logging timestamps
 def get_time():
@@ -91,6 +92,16 @@ def hyp_residuals(fun_params, xn, yn): # this will evaluate the residuals of the
 def lin_model(fun_params, x): # this will evaluate the linear fit function
     b, m = fun_params[0], fun_params[1]
     return [m * item for item in x] + b # cannot multiple float by list of floats
+
+def parse_device_id():# parse local calib.json file from connected device for device id
+    try:
+        with open("calib.json") as f:
+            dev_file = json.load(f)
+    except Exception as e:
+        print("Couldn't load json file from local")
+        print(f"Reason: {e}")
+    return dev_file["ADC_CALIB"][0]["DEVICE_ID"]
+    
 
 def sweepmean(s): # needs testing
     """s assumed to have the following structure:
