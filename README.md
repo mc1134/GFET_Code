@@ -22,6 +22,11 @@ This section describes the standalone module for the GFET device. The usage of t
 - Button 3: Interrupts current process to return to idle state. Any recorded data is
   discarded.
 
+#### State Diagram
+
+The following diagram describes the states that the 
+![](state_diagram.svg)
+
 #### Ideal Workflow
 
 1. User powers on the device. Device is in idle state when powered on - this script
