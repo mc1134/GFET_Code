@@ -52,13 +52,13 @@ The following diagram describes the possible states and transitions for the devi
 #### Installation:
 
 1. Copy the GFET_driver.py file (the "standalone module") to the device using SSH. Note that currently (as of November 2023) all GFET devices do not innately have an interface and as such must be manipulated via an SSH tunnel. This device will put the standalone module into the **root directory** of the device. This is the command to run:
-  - template: `scp -i [KEY_FILE] /path/to/GFET_driver.py [USER]@[IP]:~`
-  - example: `scp -i ~/.ssh/id_rsa /D/GFET_code/standalone/GFET_driver.py root@192.168.0.1:~`
+   - template: `scp -i [KEY_FILE] /path/to/GFET_driver.py [USER]@[IP]:~`
+   - example: `scp -i ~/.ssh/id_rsa /D/GFET_code/standalone/GFET_driver.py root@192.168.0.1:~`
 2. SSH into the device from a computer. This is the command to run:
-  - template: `ssh -i [KEY_FILE] [USER]@[IP]`
-  - example: `ssh -i ~/.ssh/id_rsa root@192.168.0.1`
+   - template: `ssh -i [KEY_FILE] [USER]@[IP]`
+   - example: `ssh -i ~/.ssh/id_rsa root@192.168.0.1`
 3. Modify the `.bash_profile` file. This file is run when the device reboots - we will take advantage of this to create an auto-restart capability for when the device is rebooted. The idea is that the device will always be running the standalone module whenever it is on. Command to run:
-  - `echo -e "python3 ~/GFET_driver.py" >> ~/.bash_profile`
+   - `echo -e "python3 ~/GFET_driver.py" >> ~/.bash_profile`
 
 ### GUI Mode
 
