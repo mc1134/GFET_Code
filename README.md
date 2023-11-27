@@ -17,58 +17,37 @@ There are two modes one can run the code in:
 NOTE: this uses the same string as the HELP STRING in the GFET_Code.py file.
 
 This section describes the standalone module for the GFET device. The usage of the device is as follows:
-- Button 2: Runs a baseline.
-- Button 2: Runs a sample.
-- Button 3: Interrupts current process to return to idle state. Any recorded data is
-  discarded.
+- **Button 2**: Runs a baseline.
+- **Button 2**: Runs a sample.
+- **Button 3**: Interrupts current process to return to idle state. Any recorded data is discarded.
 
 #### State Diagram
 
-The following diagram describes the states that the 
+The following diagram describes the possible states and transitions for the device using the standalone module.
 ![](state_diagram.svg)
 
 #### Ideal Workflow
 
-1. User powers on the device. Device is in idle state when powered on - this script
-   starts as a result of powering on the device.
-2. User presses button 2. This gathers baseline data and takes approximately 80-100
-   seconds.
+1. User powers on the device. Device is in idle state when powered on - this script starts as a result of powering on the device.
+2. User presses **button 2**. This gathers baseline data and takes approximately 80-100 seconds.
 3. After baseline completes, user inserts sample in the device.
-4. User presses button 2. This gathers sampling data and also takes 80-100 seconds.
-   a. Once the sampling completes, a quality control test is run on both data sets
-      unknown to the user. This is to ensure that the readout is not a false +/-.
-   b. If the data passes the quality control step, the dirac calculation is performed.
-      The result will be displayed using the LEDs.
-5. After interpreting the LED lights (see below), the user will press button 3 to
-   return the board to an idle state.
+4. User presses **button 2**. This gathers sampling data and also takes 80-100 seconds.
+   a. Once the sampling completes, a quality control test is run on both data sets unknown to the user. This is to ensure that the readout is not a false +/-.
+   b. If the data passes the quality control step, the dirac calculation is performed. The result will be displayed using the LEDs.
+5. After interpreting the LED lights (see below), the user will press **button 3** to return the board to an idle state.
 
 #### Interpreting the LED Lights:
 
-- SOLID YELLOW: The board is in an idle state. The user should press button 2 to
-  take baseline data.
-- FLASHING BLUE: The board is currently taking baseline data. The user may interrupt
-  this by pressing button 3, which returns the board to an idle state.
-- SOLID BLUE: The board has finished taking baseline data. The user should press button
-  2 to take sampling data.
-- FLASHING MAGENTA: The board is currently taking sampling data. The user may interrupt
-  this by pressing button 3, which returns the board to an idle state.
-- SOLID MAGENTA: The board has finished taking sampling data. This color should be quite
-  rare to see as the board will automatically move on to quality control analysis.
-- FLASHING YELLOW: The board has calculated a bad chip result from quality control
-  analysis. The user should press button 3 to return the board to an idle state.
-- SOLID RED: The board has finished with a POSITIVE result - the absolute dirac
-  voltage calculation exceeds the set threshold. I.E. you probably have covid. The
-  user should press button 3 to return the board to an idle state.
-- SOLID GREEN: The board has finished with a NEGATIVE result - the absolute dirac
-  voltage calculation is within the set threshold. The user should press button 3
-  to return the board to an idle state.
-- SOLID CYAN: The board has finished with an INCONCLUSIVE result - the absolute
-  dirac voltage calculation is within a "buffer" zone, i.e. (threshold) +- (buffer).
-  The user should press button 3 to return the board to an idle state.
-- FLASHING RED: Something went wrong that is not part of the predefined workflow.
-  Usually this will have something to do with an error in the code and not on the
-  user's part - attempting mathematics with non-numeric variables, for instance.
-  The user should press button 3 to return the board to an idle state.
+- SOLID YELLOW: The board is in an idle state. The user should press **button 2** to take baseline data.
+- FLASHING BLUE: The board is currently taking baseline data. The user may interrupt this by pressing **button 3**, which returns the board to an idle state.
+- SOLID BLUE: The board has finished taking baseline data. The user should press **button 2** to take sampling data.
+- FLASHING MAGENTA: The board is currently taking sampling data. The user may interrupt this by pressing **button 3**, which returns the board to an idle state.
+- SOLID MAGENTA: The board has finished taking sampling data. This color should be quite rare to see as the board will automatically move on to quality control analysis.
+- FLASHING YELLOW: The board has calculated a bad chip result from quality control analysis. The user should press **button 3** to return the board to an idle state.
+- SOLID RED: The board has finished with a POSITIVE result - the absolute dirac voltage calculation exceeds the set threshold. I.E. you probably have covid. The user should press **button 3** to return the board to an idle state.
+- SOLID GREEN: The board has finished with a NEGATIVE result - the absolute dirac voltage calculation is within the set threshold. The user should press **button 3** to return the board to an idle state.
+- SOLID CYAN: The board has finished with an INCONCLUSIVE result - the absolute dirac voltage calculation is within a "buffer" zone, i.e. (threshold) +- (buffer). The user should press **button 3** to return the board to an idle state.
+- FLASHING RED: Something went wrong that is not part of the predefined workflow. Usually this will have something to do with an error in the code and not on the user's part - attempting mathematics with non-numeric variables, for instance. The user should press **button 3** to return the board to an idle state.
 
 #### Installation:
 
