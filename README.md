@@ -95,16 +95,16 @@ The Command Prompt window will display debug information whenever the user takes
    - **Enter IP Address**: a text entry field for entering the IP address to connect to.
    - **Connect**: a button that connects to the IP address specified in the "Enter IP Address" field via SSH.
    - **Disconnect**: a button that disconnects from the connected microcontroller. Has no effect if not connected.
-   - Select file directory: opens a folder selector popup, enabling you to choose a location to download files to from the SSH connection.
+   - **Select file directory**: opens a folder selector popup, enabling you to choose a location to download files to from the SSH connection.
    - **File name**: a text entry field for entering the file name of the recorded data from the connected GFET device.
    - **File directory**: a folder selection button allowing the user to choose where the data files are saved to; the chosen directory is displayed in the read-only text field.
 - Green section: Data Loading
-   - **Baseline**: a button that runs firmware module on connected microcontroller to produce a data file in 80-90 seconds, or if the maximum timeout of 120 is reached the data collection stops and times out. Requires active SSH connection.
-   - **Sample**: a button that does the exact same thing as the Baseline button.
+   - **Baseline**: a button that runs the firmware module on the connected microcontroller to produce a data file in 80-90 seconds, or if the maximum timeout of 120 seconds is reached, the data collection stops and times out. Requires active SSH connection.
+   - **Sample**: a button that does the exact same thing as the **Baseline** button. The data file has the word "SAMPLE" instead of "BASELINE".
    - **Baseline from file**: a button that opens a file selector popup, enabling you to load an existing CSV file to perform analysis on.
-   - **Sample from file**: a button that does the exact same thing as the Baseline from file button.
+   - **Sample from file**: a button that does the exact same thing as the **Baseline from file** button.
 - Blue section: Data Processing
-   - **Q/C Test**: a button that runs a quality control test on the second sweep of the data. Produces hyperbolic, parabolic, moving mean, and linear approximations of the data curve, and generates a score based on the calculated parameters of all approximations. Plots results that can be saved as PNGs. Compares the most recently gathered baseline with the most recently gathered sample.
+   - **Q/C Test**: a button that runs a quality control test on the second sweep of the data. Produces hyperbolic, parabolic, moving mean, and linear approximations of the data curve, and generates a score based on the calculated parameters of all approximations. Plots results that can be saved as PNGs. Compares the most recently loaded baseline with the most recently loaded sample.
    - **Calculate Dirac Shift**: a button that calculates the absolute dirac shift between the sample and baseline. Requires both a sample and a baseline to have been run. Plots second sweep of both sample and baseline.
 - Black section: Feedback String
    - **Feedback String**: a read-only text field that shows the results of the user's most recent action.
