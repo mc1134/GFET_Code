@@ -21,6 +21,8 @@ This section describes the standalone module for the GFET device. The usage of t
 - **Button 2**: Runs a sample.
 - **Button 3**: Interrupts current process to return to idle state. Any recorded data is discarded.
 
+Please note that to use the standalone module, you must switch to the standalone branch. To do this run the following command: `git checkout standalone`
+
 #### State Diagram
 
 The following diagram describes the possible states and transitions for the device using the standalone module.
@@ -62,4 +64,55 @@ The following diagram describes the possible states and transitions for the devi
 
 ### GUI Mode
 
-This section describes how to use the GUI mode. TBW
+This section describes how to use the GUI mode.
+
+To run the GUI, simply double-click the executable file.
+
+#### Generating the Executable File
+
+1. Install the pyinstaller library: `pip3 install pyinstaller`. This site details how to install and use pyinstaller: https://www.pyinstaller.org/en/stable/installation.html
+2. Navigate your terminal to the folder containing `main.py`, then run the following command: `python3 -m PyInstaller --onefile main.py --add-data "firmware.py;."`
+3. This will create the following resources in the folder containing `main.py`:
+   - A folder called `build` containing auxiliary files for the most recent exe compilation.
+   - A folder called `dist` that contains the file `main.exe`. This is the executable file that launches the GUI.
+
+#### Running the Program
+
+When the GUI program is opened, a Windows Command Prompt window will open. This window will display print statements while the GUI loads. On successful load, it will say:
+```
+Loading modules...
+Loading GUI...
+```
+Shortly after these messages appear, the GUI will load. This is what the GUI looks like:
+![](GUI_example.png)
+The Command Prompt window will display debug information whenever the user takes an action on the GUI. This can be helpful for debugging the program if the GUI is not behaving as intended.
+
+#### Controls
+
+- Yellow section: Connection to GFET Device
+   - **Help**: a button that displays the usage string, most of which is copied below.
+   - **Device ID**: a read-only text field that shows the device ID of the connected device.
+   - **Enter IP Address**: a text entry field for entering the IP address to connect to.
+   - **Connect**: a button that connects to the IP address specified in the "Enter IP Address" field via SSH.
+   - **Disconnect**: a button that disconnects from the connected microcontroller. Has no effect if not connected.
+   - Select file directory: opens a folder selector popup, enabling you to choose a location to download files to from the SSH connection.
+   - **File name**: a text entry field for entering the file name of the recorded data from the connected GFET device.
+   - **File directory**: a folder selection button allowing the user to choose where the data files are saved to; the chosen directory is displayed in the read-only text field.
+- Green section: Data Loading
+   - **Baseline**: a button that runs firmware module on connected microcontroller to produce a data file in 80-90 seconds, or if the maximum timeout of 120 is reached the data collection stops and times out. Requires active SSH connection.
+   - **Sample**: a button that does the exact same thing as the Baseline button.
+   - **Baseline from file**: a button that opens a file selector popup, enabling you to load an existing CSV file to perform analysis on.
+   - **Sample from file**: a button that does the exact same thing as the Baseline from file button.
+- Blue section: Data Processing
+   - **Q/C Test**: a button that runs a quality control test on the second sweep of the data. Produces hyperbolic, parabolic, moving mean, and linear approximations of the data curve, and generates a score based on the calculated parameters of all approximations. Plots results that can be saved as PNGs. Compares the most recently gathered baseline with the most recently gathered sample.
+   - **Calculate Dirac Shift**: a button that calculates the absolute dirac shift between the sample and baseline. Requires both a sample and a baseline to have been run. Plots second sweep of both sample and baseline.
+- Black section: Feedback String
+   - **Feedback String**: a read-only text field that shows the results of the user's most recent action.
+
+The GUI will automatically show descriptive detail in the monospace text fields following a relevant action. These text fields are selectable, meaning the user can copy-paste from them. The Device ID and Feedback String fields are not selectable.
+
+To close out the GUI, the user may close either the GUI or the Windows Command Prompt window.
+
+## Data Processing
+
+This section describes the process the GUI (and also the standalone module) take to calculate the dirac voltage. TBW
